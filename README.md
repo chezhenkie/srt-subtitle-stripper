@@ -2,27 +2,6 @@
 
 Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary named `srtstripper`, zero runtime dependencies. Byte-for-byte parity with the original Python script, kept for reference in `deprecated-py-src/`.
 
-## Install
-
-Prebuilt binaries are attached to every release. The URLs below use `latest`; replace it with a tag such as `v1.0.0` to pin a version.
-
-Linux (x86_64):
-    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64
-    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
-    srtstripper -h
-
-Without root, install into a user directory instead: `install -m 0755 srtstripper ~/.local/bin/srtstripper` (when `~/.local/bin` is on `PATH`).
-
-macOS (Apple Silicon):
-    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-macos-arm64
-    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
-    srtstripper -h
-
-The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open). There is no Intel macOS build yet.
-
-Windows (PowerShell or cmd, using the built-in curl):
-    curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-x86_64.exe
-
 ## Usage
 
     srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
@@ -45,6 +24,30 @@ Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with CPython-exact repla
 The exe is built as a GUI-subsystem binary, so no console window ever appears when another app launches it. Started from a console it attaches to the parent console to print PASS/FAIL; redirected stdout/stderr (pipes, files) are always honored. Right click the exe, Properties, Details shows the filled-in version metadata.
 
 Note: cmd and PowerShell only wait for console-subsystem programs. Callers that need completion or exit codes should wait on the process - Python's subprocess API, `cmd /c "srtstripper ... > out.txt"` and `Start-Process -Wait -RedirectStandardOutput` all behave correctly; a bare invocation in an interactive Windows PowerShell 5.1 prompt returns immediately, as with any GUI-subsystem tool.
+
+## Install
+
+Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.0.0` to pin a version.
+
+Install with curl (Linux):
+
+    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64
+    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+    srtstripper -h
+
+Without root, install into a user directory instead: `install -m 0755 srtstripper ~/.local/bin/srtstripper` (when `~/.local/bin` is on `PATH`).
+
+Install with curl (macOS, Apple Silicon):
+
+    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-macos-arm64
+    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+    srtstripper -h
+
+The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open). There is no Intel macOS build yet.
+
+Install with curl (Windows, PowerShell or cmd):
+
+    curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-x86_64.exe
 
 ## Build from source
 
