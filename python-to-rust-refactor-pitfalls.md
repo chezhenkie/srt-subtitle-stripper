@@ -51,7 +51,7 @@ misleading" (https://github.com/rust-lang/rust/issues/136025).
 - Same shape one level up: anywhere the Python code did many small writes through a socket, a csv writer, or a subprocess pipe, the Python runtime buffered it; in Rust either wrap the writer in BufWriter or build one big buffer and write it once.
 
 ### Rule
-Port the loop; wrap the ENDPOINT in a BufWriter once; flush once at the end; explicit flush before drop; use write_all. When in doubt, benchmark syscalls with strace/Process Monitor, not wall time.
+Port the loop; wrap the ENDPOINT in a BufWriter once; flush once at the end; explicit flush before drop; use write_all. When in doubt, benchmark syscalls with strace/Process Monitor, not wall time. If the port already builds the whole payload in memory anyway (the str.join shape), a single write_all of that buffer is the same shape - do not wrap one big write in a BufWriter.
 
 ## 2. String building in loops
 
@@ -98,6 +98,8 @@ if begin or end does not point to the starting byte offset of a character", http
 - Memory overhead per string shrinks a lot: CPython pays a full Python object header per value; Rust pays only the bytes' buffer plus a three-word header ("A String is made up of three components: a pointer to some bytes, a length, and a capacity", https://doc.rust-lang.org/std/string/struct.String.html), or a two-word fat pointer for a borrowed slice ("As slices store the length of the sequence they refer to, they have twice the size of pointers to Sized types",
 https://doc.rust-lang.org/std/primitive.slice.html). This means ported code often becomes both faster and dramatically smaller in memory, IF you fix items 1 and 3.
 
+Two traps in this area have their own sections below: Python's character classes and line splitting (section 8) and decode error handlers (section 9).
+
 ## 6. Errors, control flow, and the fallibility that Python hid
 
 - Python's runtime raised exceptions for missing files, bad conversions, math errors. In Rust those become a mix: missing files and bad conversions are `Result`s you must handle, but integer division by zero panics ("For integer types, division by zero panics", https://doc.rust-lang.org/reference/expressions/operator-expr.html), float division follows IEEE 754 (inf/NaN instead of an error; the f32 docs describe the IEEE-754-2008 conformance, https://doc.rust-lang.org/std/primitive.f32.html), and
@@ -114,7 +116,49 @@ against a release build (same vendor article).
 - Set `overflow-checks = true` in the release profile for correctness-sensitive numeric code so ported Python assumptions surface as panics instead of silent wraps (https://doc.rust-lang.org/cargo/reference/profiles.html#overflow-checks; see item 4). This does not restore arbitrary precision - use a bignum crate when you truly need it.
 - Run timing comparisons from a native filesystem, not a mounted network or 9p path.
 
-## 8. Porting ritual checklist
+## 8. Python's character classes and line splitting are not Rust's
+
+- re `\w`, re `\d`, re `\s`, `str.isspace()`, `str.splitlines()` and `str.strip()` are defined by CPython's Unicode data, and the Rust std lookalikes use different sets. Measured: `'\x1c'.isspace()` is True in Python 3.14, while Rust's `char::is_whitespace` follows the Unicode White_Space property and returns false for U+001C..U+001F.
+- The Python whitespace set measured on 3.14.6 is 0x09-0x0D, 0x1C-0x20, 0x85, 0xA0, 0x1680, 0x2000-0x200A, 0x2028-0x2029, 0x202F, 0x205F, 0x3000 (10 ranges); it is what `isspace`, `strip` and re `\s` all agree on in that runtime.
+- `str.splitlines()` breaks on \n \v \f \r \x1c \x1d \x1e \x85 U+2028 U+2029, treats \r\n as one break, and never yields a trailing empty line after a final break; Rust's `str::lines()` only understands \n and \r\n. A line-based tool ported with `lines()` silently differs on any input containing the other seven breaks.
+- Python's `int()` accepts every Unicode decimal digit (`int("\u0663") == 3`), and re `\d` matches Nd where adjacent blocks merge into single runs (mathematical digits 0x1D7CE..0x1D7FF are 50 code points in one run); Rust's `u32::from_str` is ASCII-only and rejects all of them.
+- re `[^\W\d_]` ("has a letter") counts No and Nl: superscript `\u00b2`, vulgar `\u00bd` and Roman `\u2163` pass, Arabic-Indic `\u0663` does not; Rust's `char::is_alphabetic` implements the Alphabetic property and answers differently on several of these.
+- The fix used in this port: generate the tables from the target interpreter instead of trusting Rust's methods - 727 letter ranges, 71 digit ranges, 10 space ranges, plus a 21k-code-point fixture for boundary tests - and record `sys.version` and `unicodedata.unidata_version` in the generated header (frozen at CPython 3.14.6, Unicode 16.0.0).
+
+### Rule
+Freeze every Python character-class decision into generated tables keyed to the interpreter's Unicode version, cover them with boundary fixtures, and never substitute a Rust std method for a Python-set question.
+
+## 9. Decoding errors: Python handlers are not from_utf8_lossy
+
+- `data.decode("utf-8", "replace")` emits ONE U+FFFD per error event, and the event length depends on the failure kind, per Objects/stringlib/codecs.h: invalid start byte 1 byte, invalid first continuation 1 byte, invalid second continuation 2 bytes, invalid third continuation 3 bytes, truncated at end of data swallows the whole remaining sequence.
+- Rust's `String::from_utf8_lossy` groups differently (WHATWG/Unicode maximal subpart via utf8_error_len). Measured: b"\x81\xF0\x9F" decodes to two U+FFFD in CPython and three in Rust; b"\xF0\x9F\x92" truncated at EOF is one U+FFFD in CPython.
+- Real files also pass through the whole decode chain: the original tried "utf-8-sig", then "cp1252", then "utf-8" with replace. cp1252 has five undefined bytes (0x81, 0x8D, 0x8F, 0x90, 0x9D) whose presence forces the lossy path, and a lone BOM in otherwise invalid utf-8 decodes as the mojibake characters because the cp1252 attempt succeeds first.
+- The fix used here: a hand-rolled lossy decoder mirroring the table above, checked against decoder fixtures generated from the interpreter (truncated at EOF, F4 90 range violation, ED A0 surrogate, lone continuation runs, overlong C0, BOM-in-invalid-utf-8).
+
+### Rule
+Replicate the original's decode chain and error-handler grouping; generate invalid-byte fixtures from the interpreter and compare decoded strings.
+
+## 10. CLI surface parity: argparse, paths, stdout text
+
+- argparse behavior is part of the contract when a Rust binary replaces a Python CLI: unknown options are deferred (so "the following arguments are required: input" fires before "unrecognized arguments"), and -h wins inside short clusters (-hx prints help, -xh does not).
+- Long options match by unambiguous prefix with an "ambiguous option: --num could match --numbered, --numbered-only" error; --out=value and --out value differ (the latter refuses a token that looks like another option), and every usage error exits 2 with the message on stderr.
+- Probe it instead of reading argparse internals: run the original with an edge-case argv matrix and record rc/stdout/stderr (used here: 28 cases incl. ['--out','--numbered'], ['--num','x.srt'], ['--numbered=x','x.srt'], ['-hx'], ['--bogus','-h']).
+- pathlib is not Rust Path: `Path.stem` behaves like os.path.splitext on the name ("foo." -> "foo", "a..b" -> "a.", ".hidden" and "..." keep the whole name) and `Path()` strips trailing separators; on Windows, Win32 itself normalizes trailing dots and spaces in file names and both languages inherit that. Freeze name-derived output paths with a fixture table.
+- stdout text is platform-dependent in Python: on Windows the piped stdout is encoded with the ANSI codepage (0xEB for "u-umlaut" on the test machine) and text-mode writes translate \n to \r\n, while Rust writes UTF-8 with LF. File outputs stayed byte-identical in this port; if stdout byte parity matters, replicate the codepage logic, otherwise document the deviation and normalize only message streams in the differential harness.
+
+### Rule
+Treat argv edge cases, exit codes, path derivation and stdout encoding as part of the port, freeze them with probes or tables, and compare them mechanically.
+
+## 11. Console behavior when another application launches the port
+
+- A Python script runs under python.exe (console subsystem), so a console exists and interactive output plus shell waiting just work. A Rust exe can be console or GUI subsystem, and the choice is user-visible: GUI subsystem with `#![cfg_attr(windows, windows_subsystem = "windows")]` guarantees no console window is ever allocated when a GUI app spawns it (no flash), but interactive cmd/PowerShell no longer wait for it and stdout goes nowhere unless a parent provided handles.
+- Keep both behaviors: when the inherited stdout/stderr handles are invalid, attach to the parent console (AttachConsole(ATTACH_PARENT_PROCESS), CreateFileW("CONOUT$"), SetStdHandle) before any print; when they are valid (pipe or file from the caller), leave them alone so capture keeps working.
+- Measured on the shipped exe: PE subsystem 2 (GUI); DETACHED_PROCESS with DEVNULL handles exits 0 and still writes its output file; cmd /c redirection, Start-Process -RedirectStandardOutput and Python subprocess all capture rc/stdout/files exactly.
+
+### Rule
+Pick the subsystem from the deployment requirement (window suppression vs shell waiting), rebind only invalid console handles, and verify with a no-console spawn test plus a redirected-handle capture test.
+
+## 12. Porting ritual checklist
 
 Before merging a Python to Rust port, verify each:
 
@@ -126,8 +170,13 @@ Before merging a Python to Rust port, verify each:
 - [ ] Release build (`--release`) used for any performance claim; cargo bench or criterion for the before/after numbers.
 - [ ] Error handling: every former Python exception path maps to a Result branch that is actually tested, or to a documented, intentional panic - never a bare unwrap.
 - [ ] If the Python code was dynamically dispatching on data shapes at runtime, check the Rust version still handles the union, not just the shapes that happened to show up.
+- [ ] Character classes and line splitting frozen into generated tables keyed to the interpreter's Unicode version, boundary fixtures passing, no Rust std char method standing in for a Python set (section 8).
+- [ ] Decode chain and error-handler grouping replicated, with fixtures generated from the interpreter for truncated, overlong, surrogate and undefined-byte inputs (section 9).
+- [ ] If the binary replaces a Python CLI: argv edge matrix probed, exit codes, path derivation and stdout encoding checked (section 10).
+- [ ] Golden differential test: both implementations run the same fixtures; exit code, stdout, stderr and every produced file compared by hash; run on the primary platform and on the one with different text conventions (Windows).
+- [ ] Windows exe: subsystem choice deliberate, redirected handles preserved, no-console spawn test and capture test pass (section 11).
 
-## 9. What this does NOT mean
+## 13. What this does NOT mean
 
 - Rust's compile-time dispatch and zero-cost abstractions are real: after you fix items 1 to 5, typical CPU-bound ports see very large wins, though published numbers are illustrative and often commercial: a Rust bootcamp blog measures ~47x on a 2 GB log scan and "nearly 50x" on a 10 GB file against a release build (https://rustify.rs/articles/i-rewrote-my-python-script-in-rust-2026), and an SEO content site lists "25x to 100x" for CPU-bound tasks (https://tech-insider.org/python-vs-rust-2026).
 Measure your own workload.
