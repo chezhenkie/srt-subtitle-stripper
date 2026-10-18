@@ -36,8 +36,6 @@ jobs:
             platform: linux-x86_64-musl
             target: x86_64-unknown-linux-musl
     runs-on: ${{ matrix.os }}
-    env:
-      TGT: ${{ matrix.target }}
     defaults:
       run:
         working-directory: srtstripper
@@ -53,18 +51,18 @@ jobs:
         run: cargo fmt --check
 
       - name: clippy
-        run: cargo clippy --release --locked --target "$TGT" -- -D warnings
+        run: cargo clippy --release --locked --target ${{ matrix.target }} -- -D warnings
 
       - name: build
-        run: cargo build --release --locked --target "$TGT"
+        run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: test
-        run: cargo test --release --locked --target "$TGT"
+        run: cargo test --release --locked --target ${{ matrix.target }}
 
       - name: smoke
         shell: bash
         run: |
-          BIN="target/$TGT/release/srtstripper"
+          BIN="target/${{ matrix.target }}/release/srtstripper"
           if [ -f "$BIN.exe" ]; then BIN="$BIN.exe"; fi
           printf '1\r\n00:00:01,000 --> 00:00:02,000\r\nHello smoke test.\r\n1234\r\n' > sample.srt
           "$BIN" sample.srt
@@ -78,10 +76,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [ -f "target/$TGT/release/srtstripper.exe" ]; then
-            cp "target/$TGT/release/srtstripper.exe" "dist/srtstripper-${{ matrix.platform }}.exe"
+          if [ -f "target/${{ matrix.target }}/release/srtstripper.exe" ]; then
+            cp "target/${{ matrix.target }}/release/srtstripper.exe" "dist/srtstripper-${{ matrix.platform }}.exe"
           else
-            cp "target/$TGT/release/srtstripper" "dist/srtstripper-${{ matrix.platform }}"
+            cp "target/${{ matrix.target }}/release/srtstripper" "dist/srtstripper-${{ matrix.platform }}"
           fi
 
       - uses: actions/upload-artifact@v4
