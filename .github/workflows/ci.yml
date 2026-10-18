@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: windows-latest
+            platform: windows-x86_64
+          - os: macos-latest
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: srtstripper
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: rustfmt check
+        run: cargo fmt --check
+
+      - name: clippy
+        run: cargo clippy --release --locked -- -D warnings
+
+      - name: build
+        run: cargo build --release --locked
+
+      - name: test
+        run: cargo test --release --locked
+
+      - name: smoke
+        shell: bash
+        run: |
+          if [ -f target/release/srtstripper.exe ]; then
+            ./target/release/srtstripper.exe --version
+          else
+            ./target/release/srtstripper --version
+          fi
+
+      - name: stage artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ -f target/release/srtstripper.exe ]; then
+            cp target/release/srtstripper.exe "dist/srtstripper-${{ matrix.platform }}.exe"
+          else
+            cp target/release/srtstripper "dist/srtstripper-${{ matrix.platform }}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: srtstripper-${{ matrix.platform }}
+          path: srtstripper/dist/*
+          if-no-files-found: error
+
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
