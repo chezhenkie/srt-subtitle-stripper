@@ -19,7 +19,7 @@ Blank-line guarantee (all modes): exactly one blank line between paragraphs; run
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with CPython-exact replacement handling. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
 
-## Windows
+## Windows behavior
 
 The exe is built as a GUI-subsystem binary, so no console window ever appears when another app launches it. Started from a console it attaches to the parent console to print PASS/FAIL; redirected stdout/stderr (pipes, files) are always honored. Right click the exe, Properties, Details shows the filled-in version metadata.
 
@@ -29,7 +29,7 @@ Note: cmd and PowerShell only wait for console-subsystem programs. Callers that 
 
 Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.0.0` to pin a version.
 
-Install with curl (Linux):
+### Linux (x86_64)
 
     curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64
     sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
@@ -37,7 +37,7 @@ Install with curl (Linux):
 
 Without root, install into a user directory instead: `install -m 0755 srtstripper ~/.local/bin/srtstripper` (when `~/.local/bin` is on `PATH`).
 
-Install with curl (macOS, Apple Silicon):
+### macOS (Apple Silicon)
 
     curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-macos-arm64
     sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
@@ -45,7 +45,7 @@ Install with curl (macOS, Apple Silicon):
 
 The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open). There is no Intel macOS build yet.
 
-Install with curl (Windows, PowerShell or cmd):
+### Windows (PowerShell or cmd)
 
     curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-x86_64.exe
 
