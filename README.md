@@ -37,6 +37,13 @@ console to print PASS/FAIL; redirected stdout/stderr (pipes, files) are always
 honored. Right click the exe, Properties, Details shows the filled-in version
 metadata.
 
+Note: cmd and PowerShell only wait for console-subsystem programs. Callers that
+need completion or exit codes should wait on the process - Python's subprocess
+API, `cmd /c "srtstripper ... > out.txt"` and `Start-Process -Wait
+-RedirectStandardOutput` all behave correctly; a bare invocation in an
+interactive Windows PowerShell 5.1 prompt returns immediately, as with any
+GUI-subsystem tool.
+
 ## Build
 
     cd srtstripper

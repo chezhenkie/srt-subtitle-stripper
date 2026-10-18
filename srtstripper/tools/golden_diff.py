@@ -130,6 +130,25 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def msgkey(b: bytes) -> str:
+    """Comparison key for stdout/stderr messages.
+
+    On Linux/macOS this is a plain decode plus CRLF normalization. On Windows
+    Python's piped stdout uses the ANSI codepage (e.g. cp1252) and prints
+    Windows path separators; the Rust binary always writes UTF-8 with the
+    caller's separators. The key unifies that presentation layer; exit codes
+    and every output file stay byte-exact in all cases.
+    """
+    try:
+        s = b.decode("utf-8")
+    except UnicodeDecodeError:
+        s = b.decode("cp1252", "replace")
+    s = s.replace("\r\n", "\n")
+    if os.name == "nt":
+        s = s.replace("\\", "/")
+    return s
+
+
 def tree(root: Path) -> dict:
     out = {}
     for p in sorted(root.rglob("*")):
@@ -212,9 +231,9 @@ def main() -> int:
             print(f"PASS {name}")
             continue
         problems = []
-        if py_out != rs_out:
+        if msgkey(py_out) != msgkey(rs_out):
             problems.append(f"stdout py={excerpt(py_out)} rust={excerpt(rs_out)}")
-        if py_err != rs_err:
+        if msgkey(py_err) != msgkey(rs_err):
             problems.append(f"stderr py={excerpt(py_err)} rust={excerpt(rs_err)}")
         if py_files != rs_files:
             only_py = {k: v for k, v in py_files.items() if rs_files.get(k) != v}
