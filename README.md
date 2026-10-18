@@ -1,72 +1,66 @@
-# strip_srt.py manual
+# srt-subtitle-stripper
 
-Turns subtitle (.srt) or plain text files into clean text: removes cue numbers, timecodes and other non-letter lines, keeps every line with at least one letter, and guarantees a blank line between paragraphs. Made for reading long transcripts and for feeding them to AI agents.
+Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust
+binary named `srtstripper`, zero runtime dependencies. Byte-for-byte parity
+with the original Python script, kept for reference in `deprecated-py-src/`.
 
-## Run it
+## Usage
 
-Needs Python 3, no packages. The input file is only read, never changed.
+    srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
 
-```
-python strip_srt.py "video.srt"
-```
+- default: keep every line with at least one letter, drop index and timestamp
+  lines, keep blank lines for separation.
+- `--keep-timecodes`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`.
+- `--numbered`: prefix every kept text line with a 5-digit counter
+  (`00001`, `00002`, ...); blank separator lines stay unnumbered.
+- `--numbered-only`: SRT look without timecodes; a number line (`00001`) above
+  each text block, blank lines kept. Cannot be combined with `--keep-timecodes`.
 
-Output lands next to the input as `video - alpha.txt`.
+Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`,
+`"<stem> - numbered.txt"`; `--numbered` stacked on another mode appends
+`" numbered"` to the suffix. Existing `--out` parent directories are created.
 
-## Modes
+Exit codes: 0 success, 2 usage error or input not found, 1 I/O error.
 
-```
-python strip_srt.py "video.srt"                     text lines, blank lines kept
-python strip_srt.py "video.srt" --keep-timecodes    [00:12:34] text, one line per cue
-python strip_srt.py "video.srt" --numbered          00001 text
-python strip_srt.py "video.srt" --numbered-only     00001 on its own line, text below
-```
+Blank-line guarantee (all modes): exactly one blank line between paragraphs;
+runs of blank lines collapse to one; trailing blank lines are trimmed.
 
-`--numbered` stacks on the timecode mode: `--keep-timecodes --numbered` gives `00001 [00:12:34] text`.
+Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with CPython-exact
+replacement handling. Output is UTF-8; CRLF vs LF is detected from the input
+and preserved.
 
-## Blank-line rule
+## Windows
 
-Removing cue numbers and timecodes never glues two paragraphs together: if the removed lines were the only separator, a blank line is inserted there. Runs of blank lines collapse to one, trailing blanks are dropped.
+The exe is built as a GUI-subsystem binary, so no console window ever appears
+when another app launches it. Started from a console it attaches to the parent
+console to print PASS/FAIL; redirected stdout/stderr (pipes, files) are always
+honored. Right click the exe, Properties, Details shows the filled-in version
+metadata.
 
-## Examples
+## Build
 
-Input:
-```
-1
-00:00:00,000 --> 00:00:04,040
-I recently said with the start-up CDO for them of their product.
+    cd srtstripper
+    cargo build --release --locked
 
-2
-00:00:04,040 --> 00:00:08,240
-His goal was to show me two remote systems alongside their application logs.
-```
+## CI and releases
 
-default:
-```
-I recently said with the start-up CDO for them of their product.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests and an
+end-to-end smoke on Linux, Windows and macOS, and uploads the binaries as
+artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries
+attached.
 
-His goal was to show me two remote systems alongside their application logs.
-```
+## Parity testing
 
---keep-timecodes --numbered:
-```
-00001 [00:00:00] I recently said with the start-up CDO for them of their product.
+    python3 srtstripper/tools/golden_diff.py
 
-00002 [00:00:04] His goal was to show me two remote systems alongside their application logs.
-```
+runs the Python original and the Rust binary over a fixture set times all modes
+and compares exit codes, stdout, stderr and every output file byte-for-byte.
+Unicode tables for `\w`, `\d`, `\s`, `isspace`, `splitlines` and cp1252 are
+generated from CPython 3.14 (Unicode 16.0.0) by `srtstripper/tools/gen_tables.py`
+into `srtstripper/src/tables.rs`, because Python's and Rust's built-in sets are
+not identical (e.g. U+001C..U+001F are Python whitespace but not Rust
+whitespace). The lossy UTF-8 decoder replicates CPython's exact error grouping.
 
---numbered-only:
-```
-00001
-I recently said with the start-up CDO for them of their product.
+## License
 
-00002
-His goal was to show me two remote systems alongside their application logs.
-```
-
-## Naming and details
-
-- Default names: `<name> - alpha.txt`, `<name> - timecodes.txt`, `<name> - numbered.txt`; stacked mode: `<name> - timecodes numbered.txt`. `--out "path"` sets your own.
-- Counter runs 00001, 00002, ... up to 99999; beyond that it widens (100000) instead of wrapping.
-- Multi-line cue text merges into one paragraph in timecode mode; same-cue lines stay together under one number in --numbered-only.
-- Reads UTF-8 (BOM ok) or cp1252; writes UTF-8; keeps the file's original line endings.
-- "Text" means a line with at least one letter (Unicode letters count); digit-only or symbol-only lines are treated as scaffolding and dropped.
+MIT, see LICENSE.

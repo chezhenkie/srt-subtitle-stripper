@@ -55,11 +55,15 @@ jobs:
       - name: smoke
         shell: bash
         run: |
-          if [ -f target/release/srtstripper.exe ]; then
-            ./target/release/srtstripper.exe --version
-          else
-            ./target/release/srtstripper --version
-          fi
+          BIN=target/release/srtstripper
+          if [ -f "$BIN.exe" ]; then BIN="$BIN.exe"; fi
+          printf '1\r\n00:00:01,000 --> 00:00:02,000\r\nHello smoke test.\r\n1234\r\n' > sample.srt
+          "$BIN" sample.srt
+          test -s "sample - alpha.txt"
+          grep -Fq "Hello smoke test." "sample - alpha.txt"
+          if grep -q "1234" "sample - alpha.txt"; then exit 1; fi
+          "$BIN" --keep-timecodes --numbered sample.srt
+          grep -Fq "00001 [00:00:01] Hello smoke test." "sample - timecodes numbered.txt"
 
       - name: stage artifact
         shell: bash
