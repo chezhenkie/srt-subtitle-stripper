@@ -37,6 +37,14 @@ Prebuilt binaries are attached to every release; the same commands are in the re
 
 Without root, install into a user directory instead: `install -m 0755 srtstripper ~/.local/bin/srtstripper` (when `~/.local/bin` is on `PATH`).
 
+### Alpine Linux / musl (x86_64)
+
+    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64-musl
+    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+    srtstripper -h
+
+Statically linked against musl, so it runs on any Linux distribution, glibc or not (Alpine, Void, containers, initramfs).
+
 ### macOS (Apple Silicon)
 
     curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-macos-arm64
@@ -56,7 +64,7 @@ The binary is not notarized; files fetched with curl carry no quarantine flag an
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests and an end-to-end smoke on Linux, Windows and macOS, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests and an end-to-end smoke on Linux, Windows, macOS and a statically linked musl build for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries attached.
 
 ## Parity testing
 

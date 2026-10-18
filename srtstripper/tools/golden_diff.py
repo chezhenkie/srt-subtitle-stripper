@@ -189,6 +189,11 @@ def main() -> int:
     global KEEP
     KEEP = args.keep
 
+    # Normalize user-supplied paths: cases run with cwd=sandbox, so relative
+    # executable/script paths would resolve against the sandbox on POSIX.
+    args.py_script = str(Path(args.py_script).resolve())
+    args.rust_bin = str(Path(args.rust_bin).resolve())
+
     py_cmd = [args.python, args.py_script]
     rs_cmd = [args.rust_bin]
     if not Path(args.py_script).is_file():

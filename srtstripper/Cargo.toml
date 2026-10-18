@@ -1,6 +1,6 @@
 [package]
 name = "srtstripper"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Strip non-alphabetic lines from SRT/text files, with optional timecodes. Rust port of strip_srt.py."
 license = "MIT"

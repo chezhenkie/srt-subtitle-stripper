@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.0.1] - 2026-10-18
+
+### Added
+
+- Statically linked musl build `srtstripper-linux-x86_64-musl`: runs on any Linux distribution without glibc, including Alpine. Built, tested and smoked in CI alongside the existing targets; install commands in the README and the release text.
+
+### Fixed
+
+- `tools/golden_diff.py` resolves a user-supplied `--rust-bin` or `--py-script` path against the caller's directory, so relative paths also work on POSIX (cases run in sandbox working directories).
+
 ## [1.0.0] - 2026-10-18
 
 First standalone release of srtstripper, a byte-for-byte Rust port of the original Python script.
