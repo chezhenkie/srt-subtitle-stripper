@@ -26,7 +26,7 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs;
 use std::io::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 mod tables;
@@ -689,7 +689,7 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize, numbered: bool) -> (St
 // ---------------------------------------------------------------------------
 
 const USAGE: &str =
-    "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input";
+    "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]";
 
 fn help_text() -> String {
     format!(
@@ -698,20 +698,25 @@ fn help_text() -> String {
 Strip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.
 
 positional arguments:
-  input              input file (read only)
+  input              input file (read only); give several or drop them onto the exe
 
 options:
   -h, --help         show this help message and exit
   --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged
   --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)
   --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept
-  --out OUT          output file (default: name derived from input)
+  --out OUT          output file (default: name derived from input); single input only
+
+With no mode flag, srtstripper.json next to the exe selects the mode; without
+that file the default text mode runs. Flags given on the command line win.
 "
     )
 }
 
 struct Args {
-    input: PathBuf,
+    /// One or more input files; Windows drag-and-drop onto the exe passes
+    /// each dropped file as a bare path.
+    inputs: Vec<PathBuf>,
     out: Option<PathBuf>,
     keep_timecodes: bool,
     numbered: bool,
@@ -776,7 +781,7 @@ fn resolve_long(arg: &str) -> Result<LongOpt, ResolveErr> {
 
 fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
     let tokens: Vec<OsString> = args.collect();
-    let mut input: Option<PathBuf> = None;
+    let mut inputs: Vec<PathBuf> = Vec::new();
     let mut out: Option<PathBuf> = None;
     let mut keep = false;
     let mut num = false;
@@ -791,11 +796,7 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
         let s = match arg.to_str() {
             Some(s) if !after_dd => s,
             _ => {
-                if input.is_none() {
-                    input = Some(PathBuf::from(arg));
-                } else {
-                    extras.push(arg.to_string_lossy().into_owned());
-                }
+                inputs.push(PathBuf::from(arg));
                 continue;
             }
         };
@@ -876,26 +877,363 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
             continue;
         }
         // positional (including "-" and non-UTF8 argv)
-        if input.is_none() {
-            input = Some(PathBuf::from(arg));
-        } else {
-            extras.push(arg.to_string_lossy().into_owned());
-        }
+        inputs.push(PathBuf::from(arg));
     }
 
-    let Some(input) = input else {
+    if inputs.is_empty() {
         return Parsed::Error("the following arguments are required: input".to_string());
-    };
+    }
     if !extras.is_empty() {
         return Parsed::Error(format!("unrecognized arguments: {}", extras.join(" ")));
     }
     Parsed::Args(Box::new(Args {
-        input,
+        inputs,
         out,
         keep_timecodes: keep,
         numbered: num,
         numbered_only: num_only,
     }))
+}
+
+// ---------------------------------------------------------------------------
+// Config: srtstripper.json next to the exe (optional; default is text only)
+// ---------------------------------------------------------------------------
+
+const CONFIG_FILE: &str = "srtstripper.json";
+
+#[derive(Default, Clone, Copy)]
+struct Config {
+    keep_timecodes: bool,
+    numbered: bool,
+    numbered_only: bool,
+}
+
+/// Minimal JSON reader for the flat config object: objects, arrays,
+/// strings (with escapes), numbers, booleans and null. The config is a
+/// plain string-keyed map; nested values are parsed and ignored.
+struct Jp<'a> {
+    b: &'a [u8],
+    i: usize,
+}
+
+#[derive(Debug, PartialEq)]
+enum Jv {
+    Str(String),
+    Num(String),
+    Bool(bool),
+    Null,
+}
+
+fn utf8_len(b: u8) -> usize {
+    match b {
+        0x00..=0x7F => 1,
+        0xC0..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        _ => 4,
+    }
+}
+
+impl<'a> Jp<'a> {
+    fn ws(&mut self) {
+        while self.i < self.b.len() {
+            match self.b[self.i] {
+                b' ' | b'\t' | b'\n' | b'\r' => self.i += 1,
+                _ => break,
+            }
+        }
+    }
+
+    fn lit(&mut self, word: &str) -> Result<(), String> {
+        if self.b[self.i..].starts_with(word.as_bytes()) {
+            self.i += word.len();
+            Ok(())
+        } else {
+            Err(format!("expected {word} at byte {}", self.i))
+        }
+    }
+
+    fn hex4(&mut self) -> Result<u32, String> {
+        if self.i + 4 > self.b.len() {
+            return Err("truncated \\u escape".to_string());
+        }
+        let s = std::str::from_utf8(&self.b[self.i..self.i + 4])
+            .map_err(|_| "invalid \\u escape".to_string())?;
+        let cp = u32::from_str_radix(s, 16).map_err(|_| "invalid \\u escape".to_string())?;
+        self.i += 4;
+        Ok(cp)
+    }
+
+    fn string(&mut self) -> Result<String, String> {
+        if self.b.get(self.i) != Some(&b'"') {
+            return Err(format!("expected string at byte {}", self.i));
+        }
+        self.i += 1;
+        let mut out = String::new();
+        loop {
+            let &b = self.b.get(self.i).ok_or("unterminated string")?;
+            self.i += 1;
+            match b {
+                b'"' => return Ok(out),
+                b'\\' => {
+                    let &e = self.b.get(self.i).ok_or("unterminated escape")?;
+                    self.i += 1;
+                    match e {
+                        b'"' => out.push('"'),
+                        b'\\' => out.push('\\'),
+                        b'/' => out.push('/'),
+                        b'b' => out.push('\u{8}'),
+                        b'f' => out.push('\u{c}'),
+                        b'n' => out.push('\n'),
+                        b'r' => out.push('\r'),
+                        b't' => out.push('\t'),
+                        b'u' => {
+                            let hi = self.hex4()?;
+                            let cp = if (0xD800..0xDC00).contains(&hi) {
+                                if self.b[self.i..].starts_with(b"\\u") {
+                                    self.i += 2;
+                                    let lo = self.hex4()?;
+                                    if (0xDC00..0xE000).contains(&lo) {
+                                        0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00)
+                                    } else {
+                                        return Err("invalid surrogate pair".to_string());
+                                    }
+                                } else {
+                                    return Err("lone surrogate".to_string());
+                                }
+                            } else {
+                                hi
+                            };
+                            out.push(char::from_u32(cp).ok_or("invalid codepoint")?);
+                        }
+                        _ => return Err("invalid escape".to_string()),
+                    }
+                }
+                _ => {
+                    let ch_len = utf8_len(b);
+                    let end = self.i + ch_len - 1;
+                    if end > self.b.len() {
+                        return Err("truncated utf-8".to_string());
+                    }
+                    out.push_str(
+                        std::str::from_utf8(&self.b[self.i - 1..end])
+                            .map_err(|_| "invalid utf-8 in string".to_string())?,
+                    );
+                    self.i = end;
+                }
+            }
+        }
+    }
+
+    fn number(&mut self) -> Result<&'a str, String> {
+        let start = self.i;
+        if self.b.get(self.i) == Some(&b'-') {
+            self.i += 1;
+        }
+        while matches!(self.b.get(self.i), Some(b'0'..=b'9')) {
+            self.i += 1;
+        }
+        if self.b.get(self.i) == Some(&b'.') {
+            self.i += 1;
+            while matches!(self.b.get(self.i), Some(b'0'..=b'9')) {
+                self.i += 1;
+            }
+        }
+        if matches!(self.b.get(self.i), Some(b'e' | b'E')) {
+            self.i += 1;
+            if matches!(self.b.get(self.i), Some(b'+' | b'-')) {
+                self.i += 1;
+            }
+            while matches!(self.b.get(self.i), Some(b'0'..=b'9')) {
+                self.i += 1;
+            }
+        }
+        if start == self.i {
+            return Err(format!("expected value at byte {}", start));
+        }
+        std::str::from_utf8(&self.b[start..self.i]).map_err(|_| "invalid number".to_string())
+    }
+
+    fn value(&mut self) -> Result<Jv, String> {
+        self.ws();
+        let &b = self.b.get(self.i).ok_or("unexpected end of input")?;
+        match b {
+            b'"' => Ok(Jv::Str(self.string()?)),
+            b'{' => {
+                self.i += 1;
+                let mut first = true;
+                loop {
+                    self.ws();
+                    if self.b.get(self.i) == Some(&b'}') {
+                        if !first {
+                            return Err("trailing comma".to_string());
+                        }
+                        self.i += 1;
+                        return Ok(Jv::Null);
+                    }
+                    first = false;
+                    let _key = self.string()?;
+                    self.ws();
+                    if self.b.get(self.i) != Some(&b':') {
+                        return Err(format!("expected ':' at byte {}", self.i));
+                    }
+                    self.i += 1;
+                    self.value()?;
+                    self.ws();
+                    match self.b.get(self.i) {
+                        Some(b',') => self.i += 1,
+                        Some(b'}') => {
+                            self.i += 1;
+                            return Ok(Jv::Null);
+                        }
+                        _ => return Err(format!("expected ',' or '}}' at byte {}", self.i)),
+                    }
+                }
+            }
+            b'[' => {
+                self.i += 1;
+                let mut first = true;
+                loop {
+                    self.ws();
+                    if self.b.get(self.i) == Some(&b']') {
+                        if !first {
+                            return Err("trailing comma".to_string());
+                        }
+                        self.i += 1;
+                        return Ok(Jv::Null);
+                    }
+                    first = false;
+                    self.value()?;
+                    self.ws();
+                    match self.b.get(self.i) {
+                        Some(b',') => self.i += 1,
+                        Some(b']') => {
+                            self.i += 1;
+                            return Ok(Jv::Null);
+                        }
+                        _ => return Err(format!("expected ',' or ']' at byte {}", self.i)),
+                    }
+                }
+            }
+            b't' => {
+                self.lit("true")?;
+                Ok(Jv::Bool(true))
+            }
+            b'f' => {
+                self.lit("false")?;
+                Ok(Jv::Bool(false))
+            }
+            b'n' => {
+                self.lit("null")?;
+                Ok(Jv::Null)
+            }
+            _ => self.number().map(|s| Jv::Num(s.to_string())),
+        }
+    }
+}
+
+fn parse_config_json(text: &str) -> Result<Vec<(String, Jv)>, String> {
+    let mut p = Jp {
+        b: text.as_bytes(),
+        i: 0,
+    };
+    p.ws();
+    if p.b.get(p.i) != Some(&b'{') {
+        return Err("config must be a JSON object".to_string());
+    }
+    let mut out = Vec::new();
+    p.i += 1;
+    let mut first = true;
+    loop {
+        p.ws();
+        if p.b.get(p.i) == Some(&b'}') {
+            if !first {
+                return Err("trailing comma".to_string());
+            }
+            p.i += 1;
+            break;
+        }
+        first = false;
+        let key = p.string()?;
+        p.ws();
+        if p.b.get(p.i) != Some(&b':') {
+            return Err(format!("expected ':' at byte {}", p.i));
+        }
+        p.i += 1;
+        let v = p.value()?;
+        out.push((key, v));
+        p.ws();
+        match p.b.get(p.i) {
+            Some(b',') => p.i += 1,
+            Some(b'}') => {
+                p.i += 1;
+                break;
+            }
+            _ => return Err(format!("expected ',' or '}}' at byte {}", p.i)),
+        }
+    }
+    p.ws();
+    if p.i != p.b.len() {
+        return Err(format!("trailing data at byte {}", p.i));
+    }
+    Ok(out)
+}
+
+fn config_from_entries(entries: &[(String, Jv)]) -> Result<Config, String> {
+    let mut cfg = Config::default();
+    for (key, val) in entries {
+        // unknown keys are ignored; more keys may be added later
+        if key == "mode" {
+            let Jv::Str(mode) = val else {
+                return Err("config key \"mode\" must be a string".to_string());
+            };
+            match mode.as_str() {
+                "text" => {}
+                "timecodes" => cfg.keep_timecodes = true,
+                "numbered" => cfg.numbered = true,
+                "numbered-only" => cfg.numbered_only = true,
+                other => return Err(format!("unknown mode \"{other}\"")),
+            }
+        }
+    }
+    if cfg.numbered && cfg.numbered_only {
+        return Err("config sets both numbered and numbered-only modes".to_string());
+    }
+    Ok(cfg)
+}
+
+fn exe_dir() -> Option<std::path::PathBuf> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+}
+
+fn load_config(dir: &Path) -> Result<Config, String> {
+    let path = dir.join(CONFIG_FILE);
+    let data = match fs::read(&path) {
+        Ok(d) => d,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Config::default()),
+        Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
+    };
+    let text =
+        String::from_utf8(data).map_err(|_| format!("{} is not valid UTF-8", path.display()))?;
+    let entries =
+        parse_config_json(&text).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    config_from_entries(&entries).map_err(|e| format!("cannot read {}: {e}", path.display()))
+}
+
+/// CLI flags override config values; config fills in what the CLI left out.
+fn merge_flags(cfg: &mut Config, args: &Args) {
+    if args.keep_timecodes {
+        cfg.keep_timecodes = true;
+    }
+    if args.numbered {
+        cfg.numbered = true;
+        cfg.numbered_only = false;
+    }
+    if args.numbered_only {
+        cfg.numbered_only = true;
+        cfg.numbered = false;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -938,8 +1276,13 @@ fn file_stem(name: &str) -> &str {
     name
 }
 
-fn run(args: &Args) -> u8 {
-    let input = &args.input;
+fn run_one(
+    input: &Path,
+    out: &Option<PathBuf>,
+    keep: bool,
+    numbered: bool,
+    numbered_only: bool,
+) -> u8 {
     if !input.is_file() {
         print_err(&format!("FAIL: input not found: {}", input.display()));
         return 2;
@@ -958,32 +1301,32 @@ fn run(args: &Args) -> u8 {
     // per line (one big allocation up front).
     let cap = text.len() + text.len() / 8 + 64;
 
-    let (body, items, mode, suffix) = if args.keep_timecodes {
+    let (body, items, mode, suffix) = if keep {
         // Separator: blank line between items in timecode mode, eol otherwise.
         let sep = if eol == "\r\n" { "\r\n\r\n" } else { "\n\n" };
-        let (b, n) = build_timecodes(&lines, sep, cap, args.numbered);
-        let mode = if args.numbered {
+        let (b, n) = build_timecodes(&lines, sep, cap, numbered);
+        let mode = if numbered {
             "keep-timecodes+numbered"
         } else {
             "keep-timecodes"
         };
-        let suffix = if args.numbered {
+        let suffix = if numbered {
             " - timecodes numbered"
         } else {
             " - timecodes"
         };
         (b, n, mode, suffix.to_string())
-    } else if args.numbered_only {
+    } else if numbered_only {
         let (b, n) = build_numbered_only(&lines, eol, cap);
         (b, n, "numbered-only", " - numbered".to_string())
     } else {
-        let (b, n) = build_default(&lines, eol, cap, args.numbered, !args.numbered);
-        let mode = if args.numbered {
+        let (b, n) = build_default(&lines, eol, cap, numbered, !numbered);
+        let mode = if numbered {
             "default+numbered"
         } else {
             "default"
         };
-        let suffix = if args.numbered {
+        let suffix = if numbered {
             " - alpha numbered"
         } else {
             " - alpha"
@@ -991,7 +1334,7 @@ fn run(args: &Args) -> u8 {
         (b, n, mode, suffix.to_string())
     };
 
-    let out_path: PathBuf = match &args.out {
+    let out_path: PathBuf = match out {
         Some(o) => o.clone(),
         None => {
             let name = input
@@ -1053,18 +1396,50 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
         Parsed::Args(args) => {
-            if args.numbered_only && args.keep_timecodes {
+            let mut args = *args;
+            for input in &mut args.inputs {
+                *input = normalize_path(std::mem::take(input));
+            }
+            args.out = args.out.map(normalize_path);
+
+            let mut cfg = match exe_dir() {
+                Some(dir) => match load_config(&dir) {
+                    Ok(c) => c,
+                    Err(msg) => {
+                        print_err(&format!("FAIL: {msg}"));
+                        return ExitCode::from(2);
+                    }
+                },
+                None => Config::default(),
+            };
+            merge_flags(&mut cfg, &args);
+
+            if cfg.numbered_only && cfg.keep_timecodes {
                 print_err(concat!(
                     "srtstripper: error: --numbered-only writes number lines and no ",
                     "timecodes; drop --keep-timecodes"
                 ));
                 return ExitCode::from(2);
             }
-            let mut args = *args;
-            args.input = normalize_path(args.input);
-            args.out = args.out.map(normalize_path);
-            let code = run(&args);
-            ExitCode::from(code)
+            if args.out.is_some() && args.inputs.len() > 1 {
+                print_err("srtstripper: error: --out can only be used with a single input");
+                return ExitCode::from(2);
+            }
+
+            let mut rc = 0u8;
+            for input in &args.inputs {
+                let code = run_one(
+                    input,
+                    &args.out,
+                    cfg.keep_timecodes,
+                    cfg.numbered,
+                    cfg.numbered_only,
+                );
+                if code > rc {
+                    rc = code;
+                }
+            }
+            ExitCode::from(rc)
         }
     }
 }
@@ -1197,5 +1572,170 @@ mod tests {
         let lines = ["first", "", "first", "", "first", "second", "", "first"];
         let (out, _) = build_numbered_only(&lines, "\n", 256);
         assert_eq!(out, "00001\nfirst\n\n00002\nsecond\n\n00003\nfirst");
+    }
+
+    fn parse(argv: &[&str]) -> Parsed {
+        parse_args(argv.iter().map(OsString::from))
+    }
+
+    #[test]
+    fn multiple_inputs_accepted() {
+        match parse(&["a.srt", "b.srt", "c.srt"]) {
+            Parsed::Args(args) => assert_eq!(args.inputs.len(), 3),
+            _ => panic!("expected Args"),
+        }
+    }
+
+    #[test]
+    fn multiple_inputs_with_flags() {
+        match parse(&["--keep-timecodes", "a.srt", "b.srt"]) {
+            Parsed::Args(args) => {
+                assert_eq!(args.inputs.len(), 2);
+                assert!(args.keep_timecodes);
+            }
+            _ => panic!("expected Args"),
+        }
+    }
+
+    #[test]
+    fn no_input_still_required() {
+        match parse(&[]) {
+            Parsed::Error(msg) => {
+                assert_eq!(msg, "the following arguments are required: input")
+            }
+            _ => panic!("expected Error"),
+        }
+    }
+
+    #[test]
+    fn json_parser_reads_flat_object() {
+        let entries = parse_config_json(r#"{"mode": "timecodes", "x": 1, "b": true, "n": null}"#)
+            .expect("valid json");
+        assert_eq!(entries.len(), 4);
+        assert_eq!(
+            entries[0],
+            ("mode".to_string(), Jv::Str("timecodes".to_string()))
+        );
+        assert_eq!(entries[1], ("x".to_string(), Jv::Num("1".to_string())));
+        assert_eq!(entries[2], ("b".to_string(), Jv::Bool(true)));
+        assert_eq!(entries[3], ("n".to_string(), Jv::Null));
+    }
+
+    #[test]
+    fn json_parser_reads_nested_and_escapes() {
+        let entries = parse_config_json(r#"{"nested": {"a": [1, 2, "x"]}, "s": "a\"b\\c\né"}"#)
+            .expect("valid json");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].0, "nested");
+        assert_eq!(entries[0].1, Jv::Null); // nested object parsed and dropped
+        assert_eq!(
+            entries[1],
+            ("s".to_string(), Jv::Str("a\"b\\c\né".to_string()))
+        );
+    }
+
+    #[test]
+    fn json_parser_rejects_bad_input() {
+        assert!(parse_config_json("").is_err());
+        assert!(parse_config_json("[1,2]").is_err());
+        assert!(parse_config_json("{\"mode\":").is_err());
+        assert!(parse_config_json("{\"mode\": \"text\"} extra").is_err());
+        assert!(parse_config_json("{\"mode\": \"text\",}").is_err());
+    }
+
+    #[test]
+    fn config_modes() {
+        let cases = [
+            (r#"{}"#, false, false, false),
+            (r#"{"mode": "text"}"#, false, false, false),
+            (r#"{"mode": "timecodes"}"#, true, false, false),
+            (r#"{"mode": "numbered"}"#, false, true, false),
+            (r#"{"mode": "numbered-only"}"#, false, false, true),
+        ];
+        for (json, keep, num, num_only) in cases {
+            let entries = parse_config_json(json).expect("valid json");
+            let cfg = config_from_entries(&entries).expect("valid config");
+            assert_eq!(
+                (cfg.keep_timecodes, cfg.numbered, cfg.numbered_only),
+                (keep, num, num_only),
+                "json {json}"
+            );
+        }
+    }
+
+    #[test]
+    fn config_unknown_key_ignored_and_bad_mode_rejected() {
+        let entries = parse_config_json(r#"{"mode": "text", "future": 1}"#).expect("valid json");
+        assert!(config_from_entries(&entries).is_ok());
+        let entries = parse_config_json(r#"{"mode": "bogus"}"#).expect("valid json");
+        assert!(config_from_entries(&entries).is_err());
+        let entries = parse_config_json(r#"{"mode": 5}"#).expect("valid json");
+        assert!(config_from_entries(&entries).is_err());
+        let entries = parse_config_json(r#"{"mode": "numbered", "mode2": "numbered-only"}"#)
+            .expect("valid json");
+        assert!(config_from_entries(&entries).is_ok());
+    }
+
+    #[test]
+    fn config_rejects_both_numbered_modes() {
+        // duplicate "mode" keys can express both; rejected as a config error
+        let entries = parse_config_json(r#"{"mode": "numbered", "mode": "numbered-only"}"#)
+            .expect("valid json");
+        assert!(config_from_entries(&entries).is_err());
+    }
+
+    #[test]
+    fn merge_flags_cli_wins() {
+        let mut cfg = Config {
+            keep_timecodes: true,
+            numbered: false,
+            numbered_only: false,
+        };
+        merge_flags(
+            &mut cfg,
+            &Args {
+                inputs: vec![],
+                out: None,
+                keep_timecodes: false,
+                numbered: true,
+                numbered_only: false,
+            },
+        );
+        assert!(cfg.keep_timecodes && cfg.numbered && !cfg.numbered_only);
+
+        let mut cfg = Config {
+            keep_timecodes: false,
+            numbered: false,
+            numbered_only: true,
+        };
+        merge_flags(
+            &mut cfg,
+            &Args {
+                inputs: vec![],
+                out: None,
+                keep_timecodes: false,
+                numbered: false,
+                numbered_only: false,
+            },
+        );
+        assert!(cfg.numbered_only && !cfg.numbered);
+
+        // CLI --numbered clears a config numbered-only
+        let mut cfg = Config {
+            keep_timecodes: false,
+            numbered: false,
+            numbered_only: true,
+        };
+        merge_flags(
+            &mut cfg,
+            &Args {
+                inputs: vec![],
+                out: None,
+                keep_timecodes: false,
+                numbered: true,
+                numbered_only: false,
+            },
+        );
+        assert!(cfg.numbered && !cfg.numbered_only);
     }
 }

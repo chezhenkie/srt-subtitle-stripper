@@ -138,6 +138,24 @@ EXTRA_CASES = [
     ("help", ["-h"]),
     ("help-prefix", ["--hel"]),
     ("no-args", []),
+    # multiple inputs (drag-and-drop onto the exe)
+    ("multi-input", ["basic.srt", "lf.srt"]),
+    ("multi-input-missing", ["basic.srt", "nope.srt"]),
+    ("multi-input-duplicate", ["basic.srt", "basic.srt"]),
+    ("multi-out-error", ["--out", "x.txt", "basic.srt", "lf.srt"]),
+    # srtstripper.json next to the exe
+    ("config-timecodes", ["basic.srt"], '{"mode": "timecodes"}'),
+    ("config-numbered-only", ["basic.srt"], '{"mode": "numbered-only"}'),
+    ("config-numbered", ["basic.srt"], '{"mode": "numbered"}'),
+    ("config-text-explicit", ["basic.srt"], '{"mode": "text"}'),
+    ("config-empty", ["basic.srt"], "{}"),
+    ("config-unknown-key", ["basic.srt"], '{"mode": "text", "future-option": true}'),
+    ("config-bad-mode", ["basic.srt"], '{"mode": "bogus"}'),
+    ("config-bad-json", ["basic.srt"], '{"mode": '),
+    ("config-mode-not-string", ["basic.srt"], '{"mode": 5}'),
+    ("config-cli-override", ["--numbered", "basic.srt"], '{"mode": "timecodes"}'),
+    ("config-cli-override-mutex", ["--keep-timecodes", "basic.srt"], '{"mode": "numbered-only"}'),
+    ("config-cli-numbered-clears", ["--numbered", "basic.srt"], '{"mode": "numbered-only"}'),
 ]
 
 # Failure messages of these cases carry OS-specific filesystem error text
@@ -196,26 +214,43 @@ def excerpt(s: str, limit: int = 300) -> str:
 
 
 def cases():
+    """(name, argv, config) triples; config is the raw srtstripper.json content
+    written next to the binary before the run and removed after."""
     out = []
     for name, mode_args in MODES.items():
         for fname in FIXTURES:
-            out.append((f"{fname}:{name}", mode_args + [fname]))
-    out.extend(EXTRA_CASES)
+            out.append((f"{fname}:{name}", mode_args + [fname], None))
+    for case in EXTRA_CASES:
+        out.append((case[0], case[1], case[2] if len(case) == 3 else None))
     return out
 
 
-def run_one(cmd, argv):
+def run_one(cmd, argv, config):
     sandbox = Path(tempfile.mkdtemp(prefix="golden-", dir=SCRATCH))
     populate(sandbox)
-    proc = subprocess.run(cmd + argv, cwd=sandbox, capture_output=True, timeout=60)
-    result = {
-        "rc": proc.returncode,
-        "stdout": msgkey(proc.stdout),
-        "stderr": msgkey(proc.stderr),
-        "files": deltas(sandbox),
-    }
-    if not KEEP:
-        shutil.rmtree(sandbox, ignore_errors=True)
+    cfg_path = None
+    if config is not None:
+        cfg_path = Path(cmd[0]).resolve().parent / "srtstripper.json"
+        cfg_path.write_text(config, encoding="utf-8", newline="\n")
+    try:
+        proc = subprocess.run(cmd + argv, cwd=sandbox, capture_output=True, timeout=60)
+        result = {
+            "rc": proc.returncode,
+            "stdout": msgkey(proc.stdout),
+            "stderr": msgkey(proc.stderr),
+            "files": deltas(sandbox),
+        }
+        if config is not None:
+            # the config error message carries the binary's absolute path;
+            # normalize it so the expectation file is portable
+            cfg_norm = str(cfg_path).replace("\\", "/") if os.name == "nt" else str(cfg_path)
+            for key in ("stdout", "stderr"):
+                result[key] = result[key].replace(cfg_norm, "srtstripper.json")
+    finally:
+        if cfg_path is not None and cfg_path.exists():
+            cfg_path.unlink()
+        if not KEEP:
+            shutil.rmtree(sandbox, ignore_errors=True)
     return result
 
 
@@ -242,8 +277,8 @@ def main() -> int:
 
     if args.update:
         expected = {}
-        for name, argv in all_cases:
-            r = run_one(cmd, argv)
+        for name, argv, config in all_cases:
+            r = run_one(cmd, argv, config)
             expected[name] = {"rc": r["rc"]} if name in RC_ONLY else r
         tmp = GOLDEN.with_suffix(".json.tmp")
         tmp.write_text(
@@ -259,15 +294,15 @@ def main() -> int:
         print(f"FAIL: expectations not found: {GOLDEN} (run with --update)")
         return 1
     expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    missing = [name for name, _ in all_cases if name not in expected]
+    missing = [name for name, _, _ in all_cases if name not in expected]
     if missing:
         print(f"FAIL: {len(missing)} cases lack expectations, first: {missing[:5]}")
         print("run with --update to regenerate")
         return 1
 
     failures = 0
-    for name, argv in all_cases:
-        r = run_one(cmd, argv)
+    for name, argv, config in all_cases:
+        r = run_one(cmd, argv, config)
         exp = expected[name]
         problems = []
         if r["rc"] != exp.get("rc"):

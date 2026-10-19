@@ -23,7 +23,9 @@ Default output:
 
 ## Usage
 
-    srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
+    srtstripper "file.srt" ["file2.srt" ...] [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
+
+Several input files may be given; each is processed in order with the same flags and gets its own PASS line. `--out` is only valid with a single input.
 
 - default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
 - `--keep-timecodes`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`.
@@ -32,13 +34,28 @@ Default output:
 
 Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`; `--numbered` stacked on another mode appends `" numbered"` to the suffix. Existing `--out` parent directories are created.
 
-Exit codes: 0 success, 2 usage error or input not found, 1 I/O error.
+Exit codes: 0 success, 2 usage error, input not found or a bad config file, 1 I/O error.
 
 Blank-line guarantee (all modes): exactly one blank line between paragraphs; runs of blank lines collapse to one; trailing blank lines are trimmed.
 
 Repeat collapsing applies to the default and `--numbered-only` modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. `--numbered` and `--keep-timecodes` keep every line.
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with permissive replacement decoding for invalid bytes. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
+
+## Drag and drop
+
+Drop one or more SRT/text files onto the exe: each dropped file arrives as a bare path argument and is processed in order, writing its cleaned copy next to the source. No console window appears, since the exe is a GUI-subsystem binary; started from a console the per-file PASS lines are printed. A dropped folder is not scanned, so point the dropper at files.
+
+## Configuration
+
+An optional `srtstripper.json` file next to the exe sets the mode when no mode flag is passed, which is what a dropper run uses. The default with no file is the text mode.
+
+    {"mode": "timecodes"}
+
+- `mode`: `text` (default), `timecodes`, `numbered`, `numbered-only`.
+- Unknown keys are ignored, so a config written for a newer version still loads in an older exe.
+- A missing file means text mode; a malformed file, a non-string `mode` or an unknown mode value is an error (exit code 2).
+- Flags on the command line win over the config: `--numbered` clears a config `numbered-only` and vice versa.
 
 ## Windows behavior
 
@@ -123,7 +140,7 @@ ARM64:
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 136-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
 
 ## Development
 

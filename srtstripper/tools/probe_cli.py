@@ -52,6 +52,9 @@ CASES = [
     ("help", ["-h"]),
     ("help-prefix", ["--hel"]),
     ("ddash-positional", ["--", "--numbered"]),
+    ("multi-input", ["basic.srt", "doubling.txt"]),
+    ("multi-input-missing", ["basic.srt", "nope.srt"]),
+    ("multi-out-error", ["--out", "x.txt", "basic.srt", "doubling.txt"]),
 ]
 
 

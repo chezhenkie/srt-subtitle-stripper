@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.4.0]
+
+### Added
+
+- Dropper support: several input files may be given at once (Windows drag-and-drop onto the exe passes each dropped file as a bare path). Each input is processed in order with the same flags and prints its own PASS line; the exit code is the worst of the run. `--out` is rejected with more than one input.
+- Optional `srtstripper.json` next to the exe selects the mode when no mode flag is passed. The file is a flat JSON object with a `mode` key (`text` default, `timecodes`, `numbered`, `numbered-only`); unknown keys are ignored, a missing file means text mode, and a malformed file or unknown mode is an error (exit code 2). Command line flags override the config.
+
+### Changed
+
+- Golden regression suite extended to 136 cases: multiple inputs and the config file.
+- Help text and usage line document multiple inputs and the config file.
+
 ## [1.3.0]
 
 ### Added

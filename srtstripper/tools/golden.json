@@ -42,7 +42,7 @@
  "ambiguous": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: ambiguous option: --num could match --numbered, --numbered-only\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: ambiguous option: --num could match --numbered, --numbered-only\n",
   "stdout": ""
  },
  "archive.tar.gz:default": {
@@ -205,6 +205,94 @@
   "stderr": "",
   "stdout": "PASS: mode=keep-timecodes, wrote 3 lines from 6 input lines -> bom - timecodes.txt\n"
  },
+ "config-bad-json": {
+  "files": {},
+  "rc": 2,
+  "stderr": "FAIL: cannot read srtstripper.json: unexpected end of input\n",
+  "stdout": ""
+ },
+ "config-bad-mode": {
+  "files": {},
+  "rc": 2,
+  "stderr": "FAIL: cannot read srtstripper.json: unknown mode \"bogus\"\n",
+  "stdout": ""
+ },
+ "config-cli-numbered-clears": {
+  "files": {
+   "basic - alpha numbered.txt": "00001 Hello world.\r\n\r\n00002 Second cue line one\r\n00003 second cue line two\r\n\r\n00004 OK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default+numbered, wrote 6 lines from 14 input lines -> basic - alpha numbered.txt\n"
+ },
+ "config-cli-override": {
+  "files": {
+   "basic - timecodes numbered.txt": "00001 [00:00:01] Hello world.\r\n\r\n00002 [00:00:04] Second cue line one second cue line two\r\n\r\n00003 [00:00:07] OK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 3 lines from 14 input lines -> basic - timecodes numbered.txt\n"
+ },
+ "config-cli-override-mutex": {
+  "files": {},
+  "rc": 2,
+  "stderr": "srtstripper: error: --numbered-only writes number lines and no timecodes; drop --keep-timecodes\n",
+  "stdout": ""
+ },
+ "config-empty": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
+ },
+ "config-mode-not-string": {
+  "files": {},
+  "rc": 2,
+  "stderr": "FAIL: cannot read srtstripper.json: config key \"mode\" must be a string\n",
+  "stdout": ""
+ },
+ "config-numbered": {
+  "files": {
+   "basic - alpha numbered.txt": "00001 Hello world.\r\n\r\n00002 Second cue line one\r\n00003 second cue line two\r\n\r\n00004 OK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default+numbered, wrote 6 lines from 14 input lines -> basic - alpha numbered.txt\n"
+ },
+ "config-numbered-only": {
+  "files": {
+   "basic - numbered.txt": "00001\r\nHello world.\r\n\r\n00002\r\nSecond cue line one\r\nsecond cue line two\r\n\r\n00003\r\nOK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=numbered-only, wrote 9 lines from 14 input lines -> basic - numbered.txt\n"
+ },
+ "config-text-explicit": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
+ },
+ "config-timecodes": {
+  "files": {
+   "basic - timecodes.txt": "[00:00:01] Hello world.\r\n\r\n[00:00:04] Second cue line one second cue line two\r\n\r\n[00:00:07] OK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=keep-timecodes, wrote 3 lines from 14 input lines -> basic - timecodes.txt\n"
+ },
+ "config-unknown-key": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
+ },
  "cp1252.srt:default": {
   "files": {
    "cp1252 - alpha.txt": "caf\u00e9 quote\u2019s here\nsecond line\n\nthird\n"
@@ -344,15 +432,17 @@
   "stdout": "PASS: mode=keep-timecodes, wrote 0 lines from 0 input lines -> empty - timecodes.txt\n"
  },
  "extra-positional": {
-  "files": {},
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: unrecognized arguments: extra.txt\n",
-  "stdout": ""
+  "stderr": "FAIL: input not found: extra.txt\n",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
  },
  "flag-with-value": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: argument --numbered: ignored explicit argument 'x'\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: argument --numbered: ignored explicit argument 'x'\n",
   "stdout": ""
  },
  "foo.:default": {
@@ -399,13 +489,13 @@
   "files": {},
   "rc": 0,
   "stderr": "",
-  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only)\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input)\n\n"
+  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
  },
  "help-prefix": {
   "files": {},
   "rc": 0,
   "stderr": "",
-  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only)\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input)\n\n"
+  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
  },
  "keep+numonly": {
   "files": {},
@@ -539,10 +629,41 @@
   "stderr": "",
   "stdout": "PASS: mode=keep-timecodes, wrote 2 lines from 5 input lines -> mixed-eol - timecodes.txt\n"
  },
+ "multi-input": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n",
+   "lf - alpha.txt": "Hello world.\n\nSecond line\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\nPASS: mode=default, wrote 3 lines from 8 input lines -> lf - alpha.txt\n"
+ },
+ "multi-input-duplicate": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\nPASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
+ },
+ "multi-input-missing": {
+  "files": {
+   "basic - alpha.txt": "Hello world.\r\n\r\nSecond cue line one\r\nsecond cue line two\r\n\r\nOK.\r\n"
+  },
+  "rc": 2,
+  "stderr": "FAIL: input not found: nope.srt\n",
+  "stdout": "PASS: mode=default, wrote 6 lines from 14 input lines -> basic - alpha.txt\n"
+ },
+ "multi-out-error": {
+  "files": {},
+  "rc": 2,
+  "stderr": "srtstripper: error: --out can only be used with a single input\n",
+  "stdout": ""
+ },
  "mutex": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: argument --numbered-only: not allowed with argument --numbered\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: argument --numbered-only: not allowed with argument --numbered\n",
   "stdout": ""
  },
  "newline-only.txt:default": {
@@ -588,7 +709,7 @@
  "no-args": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: the following arguments are required: input\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n",
   "stdout": ""
  },
  "no-letters.txt:default": {
@@ -704,13 +825,13 @@
  "out-missing-val": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: argument --out: expected one argument\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n",
   "stdout": ""
  },
  "out-opt-like-val": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: argument --out: expected one argument\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n",
   "stdout": ""
  },
  "sub/inner.srt:default": {
@@ -900,19 +1021,19 @@
  "unknown-long": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: unrecognized arguments: --bogus\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: --bogus\n",
   "stdout": ""
  },
  "unknown-only": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: the following arguments are required: input\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n",
   "stdout": ""
  },
  "unknown-short": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input\nsrtstripper: error: unrecognized arguments: -x\n",
+  "stderr": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: -x\n",
   "stdout": ""
  }
 }

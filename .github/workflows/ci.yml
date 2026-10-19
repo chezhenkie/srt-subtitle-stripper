@@ -90,6 +90,10 @@ jobs:
           if grep -q "1234" "sample - alpha.txt"; then exit 1; fi
           "$BIN" --keep-timecodes --numbered sample.srt
           grep -Fq "00001 [00:00:01] Hello smoke test." "sample - timecodes numbered.txt"
+          printf '1\n00:00:02,000 --> 00:00:03,000\nSecond smoke.\n' > sample2.srt
+          "$BIN" sample.srt sample2.srt
+          test -s "sample2 - alpha.txt"
+          grep -Fq "Second smoke." "sample2 - alpha.txt"
 
       - name: stage artifact
         shell: bash
@@ -183,7 +187,9 @@ jobs:
             - srtstripper-windows-x86_64-setup.exe
             - srtstripper-windows-aarch64-setup.exe
 
-            Usage: `srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]`
+            Usage: `srtstripper "file.srt" ["file2.srt" ...] [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]`
+
+            Drop several SRT/text files onto the exe to convert them in one run; each input prints its own PASS line. An optional `srtstripper.json` next to the exe sets the mode for runs without flags, for example `{"mode": "timecodes"}`; command line flags win.
 
             Install with curl (Linux x86_64):
 
