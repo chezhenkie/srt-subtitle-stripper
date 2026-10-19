@@ -43,29 +43,29 @@ if (-not $Iscc -or -not (Test-Path -LiteralPath $Iscc)) {
 }
 
 $script = Join-Path $PSScriptRoot 'srtstripper.iss'
-$archs = @(
+$archList = @(
     @{ Name = 'x86_64'; Exe = 'srtstripper-windows-x86_64.exe' },
     @{ Name = 'aarch64'; Exe = 'srtstripper-windows-aarch64.exe' }
 )
 if ($Arch) {
-    $filtered = @($archs | Where-Object { $_.Name -eq $Arch })
+    $filtered = @($archList | Where-Object { $_.Name -eq $Arch })
     if ($filtered.Count -ne 1) { throw "unknown -Arch value: $Arch (expected x86_64 or aarch64)" }
-    $archs = $filtered
+    $archList = $filtered
 }
 
-for ($i = 0; $i -lt $archs.Count; $i++) {
-    $arch = $archs[$i]
-    $input = Join-Path $DistDir $arch.Exe
+for ($i = 0; $i -lt $archList.Count; $i++) {
+    $archInfo = $archList[$i]
+    $input = Join-Path $DistDir $archInfo.Exe
     if (-not (Test-Path -LiteralPath $input)) { throw "missing input: $input" }
     $inputVersion = (Get-Item -LiteralPath $input).VersionInfo.FileVersion.Trim()
     if ($inputVersion -ne "$Version.0") {
         throw "input version mismatch: $input has $inputVersion, expected $Version.0"
     }
-    $output = Join-Path $OutDir "srtstripper-windows-$($arch.Name)-setup.exe"
+    $output = Join-Path $OutDir "srtstripper-windows-$($archInfo.Name)-setup.exe"
     if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Force }
 
-    & $Iscc "/DAppVersion=$Version" "/DArch=$($arch.Name)" "/DDistDir=$DistDir" "/DOutDir=$OutDir" $script
-    if ($LASTEXITCODE -ne 0) { throw "ISCC failed for $($arch.Name), exit $LASTEXITCODE" }
+    & $Iscc "/DAppVersion=$Version" "/DArch=$($archInfo.Name)" "/DDistDir=$DistDir" "/DOutDir=$OutDir" $script
+    if ($LASTEXITCODE -ne 0) { throw "ISCC failed for $($archInfo.Name), exit $LASTEXITCODE" }
     if (-not (Test-Path -LiteralPath $output)) { throw "setup not produced: $output" }
     $setupVersion = (Get-Item -LiteralPath $output).VersionInfo
     $setupFile = $setupVersion.FileVersion.Trim()
