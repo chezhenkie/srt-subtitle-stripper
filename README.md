@@ -2,6 +2,26 @@
 
 Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary named `srtstripper`, zero runtime dependencies.
 
+## Repeat collapsing
+
+Rolling-caption subtitles repeat each line in overlapping cues before advancing, so the same text appears two or three times in a row. The default mode and `--numbered-only` keep only the first occurrence of a run of identical text lines. A non-consecutive repeat is kept, so dialogue that genuinely repeats later survives.
+
+- The comparison is exact text equality after decoding; the reference is the last kept line.
+- Blank separators between repeats do not break the run: the run collapses and leaves one blank line.
+- `--numbered` and `--keep-timecodes` keep every line, since the counter and the cue stamp already distinguish them.
+- Added in 1.1.0.
+
+Input:
+
+    The Earth is extremely old and so is the
+    The Earth is extremely old and so is the
+    life that inhabits it with the oldest
+
+Default output:
+
+    The Earth is extremely old and so is the
+    life that inhabits it with the oldest
+
 ## Usage
 
     srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
