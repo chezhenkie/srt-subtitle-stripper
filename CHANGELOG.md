@@ -2,13 +2,19 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
-## [Unreleased]
+## [1.1.1]
 
 ### Added
 
-- CI runs the golden regression suite (`tools/golden_diff.py`) against the built binary on every matrix entry, so the 120 cases gate all four targets.
+- `srtstripper-linux-aarch64` and statically linked `srtstripper-linux-aarch64-musl` builds for ARM64 Linux, including Alpine; built, tested and smoked on native ARM64 runners.
+- `SHA256SUMS` attached to every release; install docs show how to verify downloads.
 
-## [1.1.0] - 2026-10-19
+### Changed
+
+- CI runs the 120-case golden regression suite on all six targets, including both ARM64 builds.
+- Release builds pinned to Ubuntu 24.04 (x86_64 and ARM64) so the glibc floor does not move with `ubuntu-latest`; workflow actions bumped to checkout v7, upload-artifact v7 and download-artifact v8.
+
+## [1.1.0]
 
 ### Changed
 
@@ -24,7 +30,7 @@ All notable changes to this project are documented in this file. The format foll
 
 - `tools/probe_argparse.py`, superseded by `tools/probe_cli.py`.
 
-## [1.0.1] - 2026-10-18
+## [1.0.1]
 
 ### Added
 
@@ -34,7 +40,7 @@ All notable changes to this project are documented in this file. The format foll
 
 - `tools/golden_diff.py` resolves a user-supplied `--rust-bin` or `--py-script` path against the caller's directory, so relative paths also work on POSIX (cases run in sandbox working directories).
 
-## [1.0.0] - 2026-10-18
+## [1.0.0]
 
 First release of srtstripper, a standalone Rust CLI that strips non-alphabetic lines from SRT/text subtitle files.
 

@@ -9,7 +9,6 @@ Rolling-caption subtitles repeat each line in overlapping cues before advancing,
 - The comparison is exact text equality after decoding; the reference is the last kept line.
 - Blank separators between repeats do not break the run: the run collapses and leaves one blank line.
 - `--numbered` and `--keep-timecodes` keep every line, since the counter and the cue stamp already distinguish them.
-- Added in 1.1.0.
 
 Input:
 
@@ -49,7 +48,9 @@ Note: cmd and PowerShell only wait for console-subsystem programs. Callers that 
 
 ## Install
 
-Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.1.0` to pin a version.
+Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.1.1` to pin a version.
+
+Each release ships `SHA256SUMS`. Verify a download with `sha256sum -c SHA256SUMS --ignore-missing`; on Windows compare `certutil -hashfile <file> SHA256` with the matching entry.
 
 ### Linux (x86_64)
 
@@ -59,6 +60,12 @@ Prebuilt binaries are attached to every release; the same commands are in the re
 
 Without root, install into a user directory instead: `install -m 0755 srtstripper ~/.local/bin/srtstripper` (when `~/.local/bin` is on `PATH`).
 
+### Linux (ARM64)
+
+    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-aarch64
+    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+    srtstripper -h
+
 ### Alpine Linux / musl (x86_64)
 
     curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64-musl
@@ -67,13 +74,21 @@ Without root, install into a user directory instead: `install -m 0755 srtstrippe
 
 Statically linked against musl, so it runs on any Linux distribution, glibc or not (Alpine, Void, containers, initramfs).
 
+### Alpine Linux / musl (ARM64)
+
+    curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-aarch64-musl
+    sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+    srtstripper -h
+
+Statically linked against musl for ARM64 systems without glibc.
+
 ### macOS (Apple Silicon)
 
     curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-macos-arm64
     sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
     srtstripper -h
 
-The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open). There is no Intel macOS build yet.
+The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open).
 
 ### Windows (PowerShell or cmd)
 
@@ -86,7 +101,7 @@ The binary is not notarized; files fetched with curl carry no quarantine flag an
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux, Windows, macOS and a statically linked musl build for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows, macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
 
 ## Development
 

@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             platform: linux-x86_64
             target: x86_64-unknown-linux-gnu
           - os: windows-latest
@@ -32,15 +32,21 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             target: aarch64-apple-darwin
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             platform: linux-x86_64-musl
             target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64
+            target: aarch64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64-musl
+            target: aarch64-unknown-linux-musl
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: srtstripper
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -92,7 +98,7 @@ jobs:
             cp "target/${{ matrix.target }}/release/srtstripper" "dist/srtstripper-${{ matrix.platform }}"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: srtstripper-${{ matrix.platform }}
           path: srtstripper/dist/*
@@ -104,10 +110,15 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+
+      - name: checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -119,19 +130,33 @@ jobs:
             - srtstripper-windows-x86_64.exe: GUI-subsystem build, so no console window ever appears when another app launches it; attaches the parent console for interactive use; filled-in Properties/Details metadata.
             - srtstripper-linux-x86_64
             - srtstripper-linux-x86_64-musl: statically linked, no glibc dependency; runs on any Linux distribution, including Alpine
+            - srtstripper-linux-aarch64
+            - srtstripper-linux-aarch64-musl: statically linked ARM64 build for Alpine and other non-glibc systems
             - srtstripper-macos-arm64 (Apple Silicon)
 
             Usage: `srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]`
 
-            Install with curl (Linux):
+            Install with curl (Linux x86_64):
 
                 curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64
                 sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
 
-            Install with curl (Alpine and other musl systems):
+            Install with curl (Linux ARM64):
+
+                curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-aarch64
+                sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+
+            Install with curl (Alpine and other musl systems, x86_64):
 
                 curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-x86_64-musl
                 sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+
+            Install with curl (Alpine and other musl systems, ARM64):
+
+                curl -fsSL -o srtstripper https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-linux-aarch64-musl
+                sudo install -m 0755 srtstripper /usr/local/bin/srtstripper
+
+            Verify downloads against `SHA256SUMS` attached to this release.
 
             Install with curl (macOS, Apple Silicon):
 

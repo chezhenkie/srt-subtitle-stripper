@@ -2,8 +2,8 @@
 // Version numbers must match [package] version in Cargo.toml.
 
 1 VERSIONINFO
-FILEVERSION     1,1,0,0
-PRODUCTVERSION  1,1,0,0
+FILEVERSION     1,1,1,0
+PRODUCTVERSION  1,1,1,0
 FILEOS          0x40004L
 FILETYPE        0x1L
 BEGIN
