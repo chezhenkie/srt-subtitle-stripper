@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.1.0] - 2026-10-19
+
+### Changed
+
+- Default mode and `--numbered-only` collapse consecutive repeated text lines (rolling-caption doublings) to the first occurrence; blank separators between repeats shrink to one. `--numbered` and `--keep-timecodes` are unaffected.
+- Regression suite reworked: `tools/golden_diff.py` runs the binary over the fixture x mode matrix and compares exit codes, stdout, stderr and every produced file against checked-in expected results in `tools/golden.json`; `--update` regenerates them.
+- CLI probe reworked: `tools/probe_cli.py` drives the binary with edge argv and prints rc/stdout/stderr for each case.
+
+### Added
+
+- `doubling.srt` fixture in the regression matrix: triple repeats, adjacent repeats, gap-cue filler lines and kept non-consecutive repeats across all five modes.
+
+### Removed
+
+- `tools/probe_argparse.py`, superseded by `tools/probe_cli.py`.
+
 ## [1.0.1] - 2026-10-18
 
 ### Added
@@ -14,7 +30,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [1.0.0] - 2026-10-18
 
-First release of srtstripper, a standalone Rust CLI that strips non-alphabetic lines from SRT/text subtitle files. Ported from the author's earlier Python script.
+First release of srtstripper, a standalone Rust CLI that strips non-alphabetic lines from SRT/text subtitle files.
 
 ### Added
 

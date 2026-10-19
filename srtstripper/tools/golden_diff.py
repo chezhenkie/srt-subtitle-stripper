@@ -1,27 +1,34 @@
 #!/usr/bin/env python3
-"""Golden differential test: deprecated strip_srt.py vs the Rust srtstripper.
+"""Regression run for the srtstripper binary.
 
-Runs both implementations on identical sandboxes for every case and compares:
-  exit code, stdout, stderr, and every file the run produced (sha256).
-Expected to run from the repository root, e.g. inside WSL:
+Runs the binary over a fixture x mode matrix in temporary sandboxes and
+compares exit code, stdout, stderr and every produced file against the
+checked-in expected results in tools/golden.json.
 
-    python3 srtstripper/tools/golden_diff.py
+    python3 srtstripper/tools/golden_diff.py            # verify
+    python3 srtstripper/tools/golden_diff.py --update   # regenerate expectations
+    python3 srtstripper/tools/golden_diff.py --keep     # keep sandboxes
 
-Requires the Rust binary at srtstripper/target/release/srtstripper
-(cargo build --release first).
+Expectations store only deviations from the pristine fixture set: any file not
+listed under "files" must be an untouched fixture file. Message streams are
+compared with CRLF and path-separator normalization so the expectation file is
+valid on every platform; produced files are compared byte-exact.
+
+Run from the repository root; expects srtstripper/target/release/srtstripper
+unless --rust-bin is given.
 """
 import argparse
-import hashlib
+import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
-import unicodedata
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
+GOLDEN = HERE / "golden.json"
 
 FIXTURES = {
     "basic.srt": (
@@ -78,6 +85,17 @@ FIXTURES = {
         "\n"
         "outside text\n"
     ).encode("utf-8"),
+    "doubling.srt": (
+        b"1\n00:00:00,400 --> 00:00:03,190\n \nfirst line here\n\n"
+        b"2\n00:00:03,190 --> 00:00:03,200\nfirst line here\n \n\n"
+        b"3\n00:00:03,200 --> 00:00:05,110\nfirst line here\nsecond line here\n\n"
+        b"4\n00:00:05,110 --> 00:00:05,120\nsecond line here\n \n\n"
+        b"5\n00:00:05,120 --> 00:00:07,000\nsecond line here\nthird line here\n\n"
+        b"6\n00:00:07,000 --> 00:00:09,000\nno\nno\nno\n\n"
+        b"7\n00:00:09,000 --> 00:00:11,000\nlater repeat\n\n"
+        b"8\n00:00:11,000 --> 00:00:13,000\nlater repeat\n\n"
+        b"9\n00:00:13,000 --> 00:00:15,000\nthird line here\n"
+    ),
     ".hidden": b"alpha\n",
     "archive.tar.gz": b"beta\n",
     "foo.": b"gamma\n",
@@ -94,9 +112,18 @@ MODES = {
     "num-only": ["--numbered-only"],
 }
 
-# Cases where only the exit code is comparable (help/usage text and traceback
-# style error output legitimately differ between Python and Rust).
-RC_ONLY_CASES = [
+EXTRA_CASES = [
+    ("out-custom", ["--out", "custom/deep/out.txt", "basic.srt"]),
+    ("out-deep-numbered", ["--numbered", "--out", "deep/a/b/c.txt", "blank-runs.txt"]),
+    ("out-dash", ["--out", "-", "basic.srt"]),
+    ("out-empty", ["--out=", "basic.srt"]),
+    ("out-dir", ["--out", "sub", "basic.srt"]),
+    ("subdir-input", ["sub/inner.srt"]),
+    ("subdir-input-tc", ["--keep-timecodes", "sub/inner.srt"]),
+    ("dir-as-input", ["sub"]),
+    ("dash-input", ["-"]),
+    ("ddash-positional", ["--", "--numbered"]),
+    ("unicode-name", ["t\u00ebst.txt", "--numbered"]),
     ("missing", ["nope.srt"]),
     ("unknown-short", ["-x", "basic.srt"]),
     ("unknown-long", ["--bogus", "basic.srt"]),
@@ -109,36 +136,18 @@ RC_ONLY_CASES = [
     ("keep+numonly", ["--numbered-only", "--keep-timecodes", "basic.srt"]),
     ("flag-with-value", ["--numbered=x", "basic.srt"]),
     ("help", ["-h"]),
-    ("out-empty", ["--out=", "basic.srt"]),
-    ("out-dir", ["--out", "sub", "basic.srt"]),
+    ("help-prefix", ["--hel"]),
+    ("no-args", []),
 ]
 
-FULL_EXTRA_CASES = [
-    ("out-custom", ["--out", "custom/deep/out.txt", "basic.srt"]),
-    ("out-deep-numbered", ["--numbered", "--out", "deep/a/b/c.txt", "blank-runs.txt"]),
-    ("out-dash", ["--out", "-", "basic.srt"]),
-    ("subdir-input", ["sub/inner.srt"]),
-    ("subdir-input-tc", ["--keep-timecodes", "sub/inner.srt"]),
-    ("dir-as-input", ["sub"]),
-    ("dash-input", ["-"]),
-    ("ddash-positional", ["--", "--numbered"]),
-    ("unicode-name", ["t\u00ebst.txt", "--numbered"]),
-]
-
-
-def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+# Failure messages of these cases carry OS-specific filesystem error text
+# ("is a directory" vs "access denied"); only the exit code is compared.
+RC_ONLY = {"out-empty", "out-dir"}
 
 
 def msgkey(b: bytes) -> str:
-    """Comparison key for stdout/stderr messages.
-
-    On Linux/macOS this is a plain decode plus CRLF normalization. On Windows
-    Python's piped stdout uses the ANSI codepage (e.g. cp1252) and prints
-    Windows path separators; the Rust binary always writes UTF-8 with the
-    caller's separators. The key unifies that presentation layer; exit codes
-    and every output file stay byte-exact in all cases.
-    """
+    """Comparison key for stdout/stderr: UTF-8 with cp1252 fallback, CRLF
+    normalized, path separators normalized -> portable expectation file."""
     try:
         s = b.decode("utf-8")
     except UnicodeDecodeError:
@@ -149,14 +158,6 @@ def msgkey(b: bytes) -> str:
     return s
 
 
-def tree(root: Path) -> dict:
-    out = {}
-    for p in sorted(root.rglob("*")):
-        if p.is_file():
-            out[str(p.relative_to(root))] = sha(p)
-    return out
-
-
 def populate(sandbox: Path) -> None:
     for name, data in FIXTURES.items():
         p = sandbox / name
@@ -164,99 +165,139 @@ def populate(sandbox: Path) -> None:
         p.write_bytes(data)
 
 
-def run_one(cmd, argv, keep_dir):
-    sandbox = Path(tempfile.mkdtemp(prefix="golden-", dir=keep_dir))
+def deltas(root: Path) -> dict:
+    """Deviations from the pristine fixture set: added/changed files map to
+    their text, removed fixture files map to None."""
+    out = {}
+    for p in sorted(root.rglob("*")):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(root).as_posix()
+        cur = p.read_bytes()
+        if FIXTURES.get(rel) != cur:
+            out[rel] = cur.decode("utf-8")
+    for rel in FIXTURES:
+        if not (root / rel).is_file():
+            out[rel] = None
+    return out
+
+
+def excerpt(s: str, limit: int = 300) -> str:
+    return s if len(s) <= limit else s[:limit] + "..."
+
+
+def cases():
+    out = []
+    for name, mode_args in MODES.items():
+        for fname in FIXTURES:
+            out.append((f"{fname}:{name}", mode_args + [fname]))
+    out.extend(EXTRA_CASES)
+    return out
+
+
+def run_one(cmd, argv):
+    sandbox = Path(tempfile.mkdtemp(prefix="golden-", dir=SCRATCH))
     populate(sandbox)
     proc = subprocess.run(cmd + argv, cwd=sandbox, capture_output=True, timeout=60)
-    files = tree(sandbox)
+    result = {
+        "rc": proc.returncode,
+        "stdout": msgkey(proc.stdout),
+        "stderr": msgkey(proc.stderr),
+        "files": deltas(sandbox),
+    }
     if not KEEP:
         shutil.rmtree(sandbox, ignore_errors=True)
-    return proc.returncode, proc.stdout, proc.stderr, files
-
-
-def excerpt(b: bytes, limit: int = 300) -> str:
-    s = repr(b)
-    return s if len(s) <= limit else s[:limit] + "..."
+    return result
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--python", default=sys.executable)
-    ap.add_argument("--py-script", default=str(REPO / "deprecated-py-src" / "strip_srt.py"))
-    ap.add_argument("--rust-bin", default=str(REPO / "srtstripper" / "target" / "release" / "srtstripper"))
+    ap.add_argument(
+        "--rust-bin",
+        default=str(REPO / "srtstripper" / "target" / "release" / "srtstripper"),
+    )
+    ap.add_argument("--update", action="store_true", help="rewrite golden.json from a run")
     ap.add_argument("--keep", action="store_true", help="keep sandboxes for inspection")
     args = ap.parse_args()
-    global KEEP
+    global KEEP, SCRATCH
     KEEP = args.keep
+    SCRATCH = REPO / "_scratch"
+    SCRATCH.mkdir(exist_ok=True)
 
-    # Normalize user-supplied paths: cases run with cwd=sandbox, so relative
-    # executable/script paths would resolve against the sandbox on POSIX.
-    args.py_script = str(Path(args.py_script).resolve())
-    args.rust_bin = str(Path(args.rust_bin).resolve())
-
-    py_cmd = [args.python, args.py_script]
-    rs_cmd = [args.rust_bin]
-    if not Path(args.py_script).is_file():
-        print(f"FAIL: python script not found: {args.py_script}")
+    bin_path = Path(args.rust_bin)
+    if not bin_path.is_file():
+        print(f"FAIL: binary not found: {args.rust_bin} (cargo build --release)")
         return 1
-    if not Path(args.rust_bin).is_file():
-        print(f"FAIL: rust binary not found: {args.rust_bin} (cargo build --release)")
+    cmd = [str(bin_path.resolve())]
+    all_cases = cases()
+
+    if args.update:
+        expected = {}
+        for name, argv in all_cases:
+            r = run_one(cmd, argv)
+            expected[name] = {"rc": r["rc"]} if name in RC_ONLY else r
+        tmp = GOLDEN.with_suffix(".json.tmp")
+        tmp.write_text(
+            json.dumps(expected, indent=1, sort_keys=True) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        tmp.replace(GOLDEN)
+        print(f"golden: wrote {len(expected)} cases -> {GOLDEN}")
+        return 0
+
+    if not GOLDEN.is_file():
+        print(f"FAIL: expectations not found: {GOLDEN} (run with --update)")
         return 1
-
-    print(
-        f"oracle: python {sys.version.split()[0]} unicode {unicodedata.unidata_version}, "
-        f"py={args.py_script}, rust={args.rust_bin}"
-    )
-    scratch = REPO / "_scratch"
-    scratch.mkdir(exist_ok=True)
-
-    cases = []
-    for name, mode_args in MODES.items():
-        for fname in FIXTURES:
-            cases.append((f"{fname}:{name}", "full", mode_args + [fname]))
-    for name, argv in FULL_EXTRA_CASES:
-        cases.append((name, "full", argv))
-    for name, argv in RC_ONLY_CASES:
-        cases.append((name, "rc", argv))
+    expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    missing = [name for name, _ in all_cases if name not in expected]
+    if missing:
+        print(f"FAIL: {len(missing)} cases lack expectations, first: {missing[:5]}")
+        print("run with --update to regenerate")
+        return 1
 
     failures = 0
-    for name, kind, argv in cases:
-        try:
-            py_rc, py_out, py_err, py_files = run_one(py_cmd, argv, scratch)
-            rs_rc, rs_out, rs_err, rs_files = run_one(rs_cmd, argv, scratch)
-        except subprocess.TimeoutExpired:
-            print(f"FAIL {name}: timeout")
-            failures += 1
-            continue
-        if py_rc != rs_rc:
-            print(f"FAIL {name}: rc python={py_rc} rust={rs_rc}")
-            failures += 1
-            continue
-        if kind == "rc":
-            print(f"PASS {name}")
-            continue
+    for name, argv in all_cases:
+        r = run_one(cmd, argv)
+        exp = expected[name]
         problems = []
-        if msgkey(py_out) != msgkey(rs_out):
-            problems.append(f"stdout py={excerpt(py_out)} rust={excerpt(rs_out)}")
-        if msgkey(py_err) != msgkey(rs_err):
-            problems.append(f"stderr py={excerpt(py_err)} rust={excerpt(rs_err)}")
-        if py_files != rs_files:
-            only_py = {k: v for k, v in py_files.items() if rs_files.get(k) != v}
-            only_rs = {k: v for k, v in rs_files.items() if py_files.get(k) != v}
-            problems.append(f"files py-only/diff={only_py} rust-only/diff={only_rs}")
+        if r["rc"] != exp.get("rc"):
+            problems.append(f"rc expected={exp.get('rc')} actual={r['rc']}")
+        if name not in RC_ONLY:
+            if r["stdout"] != exp["stdout"]:
+                problems.append(
+                    f"stdout expected={excerpt(exp['stdout'])!r} actual={excerpt(r['stdout'])!r}"
+                )
+            if r["stderr"] != exp["stderr"]:
+                problems.append(
+                    f"stderr expected={excerpt(exp['stderr'])!r} actual={excerpt(r['stderr'])!r}"
+                )
+            if r["files"] != exp["files"]:
+                exp_only = {
+                    k: excerpt(repr(v), 200)
+                    for k, v in exp["files"].items()
+                    if r["files"].get(k) != v
+                }
+                act_only = {
+                    k: excerpt(repr(v), 200)
+                    for k, v in r["files"].items()
+                    if exp["files"].get(k) != v
+                }
+                problems.append(f"files expected-only/diff={exp_only} actual-only/diff={act_only}")
         if problems:
             print(f"FAIL {name}: " + " | ".join(problems))
             failures += 1
         else:
             print(f"PASS {name}")
 
-    total = len(cases)
+    total = len(all_cases)
     print(f"golden: {total - failures}/{total} cases matched")
-    if failures:
+    if failures and not KEEP:
         print("NOTE: sandboxes were removed; rerun with --keep to inspect")
     return 1 if failures else 0
 
 
 if __name__ == "__main__":
     KEEP = False
+    SCRATCH = None
     sys.exit(main())

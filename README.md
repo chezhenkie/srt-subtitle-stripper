@@ -1,21 +1,23 @@
 # srt-subtitle-stripper
 
-Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary named `srtstripper`, zero runtime dependencies. Ported from the author's earlier Python script.
+Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary named `srtstripper`, zero runtime dependencies.
 
 ## Usage
 
     srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
 
-- default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation.
+- default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
 - `--keep-timecodes`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`.
 - `--numbered`: prefix every kept text line with a 5-digit counter (`00001`, `00002`, ...); blank separator lines stay unnumbered.
-- `--numbered-only`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept. Cannot be combined with `--keep-timecodes`.
+- `--numbered-only`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines collapse to the first occurrence. Cannot be combined with `--keep-timecodes`.
 
 Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`; `--numbered` stacked on another mode appends `" numbered"` to the suffix. Existing `--out` parent directories are created.
 
 Exit codes: 0 success, 2 usage error or input not found, 1 I/O error.
 
 Blank-line guarantee (all modes): exactly one blank line between paragraphs; runs of blank lines collapse to one; trailing blank lines are trimmed.
+
+Repeat collapsing applies to the default and `--numbered-only` modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. `--numbered` and `--keep-timecodes` keep every line.
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with permissive replacement decoding for invalid bytes. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
 
@@ -71,7 +73,7 @@ GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests and an end-to
     cd srtstripper
     cargo test --release
 
-Unicode tables for `\w`, `\d`, `\s`, `isspace`, `splitlines` and cp1252 are generated into `srtstripper/src/tables.rs` by `srtstripper/tools/gen_tables.py`; do not edit the generated file by hand. The differential suite in `srtstripper/tools/` compares exit codes, output text and every produced file across modes and fixtures.
+Unicode tables for `\w`, `\d`, `\s`, `isspace`, `splitlines` and cp1252 are generated into `srtstripper/src/tables.rs` by `srtstripper/tools/gen_tables.py`; do not edit the generated file by hand. The regression suite in `srtstripper/tools/` runs the binary over modes and fixtures and compares exit codes, output text and every produced file against checked-in expected results; `--update` regenerates them.
 
 ## Project docs
 
