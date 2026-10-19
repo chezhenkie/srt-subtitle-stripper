@@ -3,3 +3,4 @@ dist/
 *.pdb
 *.res
 _scratch/
+releases/
