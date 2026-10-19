@@ -48,7 +48,7 @@ Note: cmd and PowerShell only wait for console-subsystem programs. Callers that 
 
 ## Install
 
-Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.1.1` to pin a version.
+Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.2.0` to pin a version.
 
 Each release ships `SHA256SUMS`. Verify a download with `sha256sum -c SHA256SUMS --ignore-missing`; on Windows compare `certutil -hashfile <file> SHA256` with the matching entry.
 
@@ -92,7 +92,13 @@ The binary is not notarized; files fetched with curl carry no quarantine flag an
 
 ### Windows (PowerShell or cmd)
 
+x86_64:
+
     curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-x86_64.exe
+
+ARM64:
+
+    curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64.exe
 
 ## Build from source
 
@@ -101,7 +107,7 @@ The binary is not notarized; files fetched with curl carry no quarantine flag an
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows, macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
 
 ## Development
 

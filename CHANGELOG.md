@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.2.0]
+
+### Added
+
+- `srtstripper-windows-aarch64.exe` native Windows ARM64 build, tested on a native ARM64 runner; GUI subsystem and version metadata match the x86_64 build.
+- CI runs the golden suite on all seven targets and verifies version metadata on both Windows builds.
+
 ## [1.1.1]
 
 ### Added
