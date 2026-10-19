@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- CI runs the golden regression suite (`tools/golden_diff.py`) against the built binary on every matrix entry, so the 120 cases gate all four targets.
+
 ## [1.1.0] - 2026-10-19
 
 ### Changed
