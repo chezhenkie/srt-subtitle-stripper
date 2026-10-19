@@ -90,7 +90,23 @@ Statically linked against musl for ARM64 systems without glibc.
 
 The binary is not notarized; files fetched with curl carry no quarantine flag and just run. If it was downloaded with a browser instead, clear the flag with `xattr -d com.apple.quarantine srtstripper` (or open it once via right click, Open).
 
+### Windows installer (x86_64, ARM64)
+
+x86_64:
+
+    curl.exe -L -O https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-x86_64-setup.exe
+    .\srtstripper-windows-x86_64-setup.exe
+
+ARM64:
+
+    curl.exe -L -O https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64-setup.exe
+    .\srtstripper-windows-aarch64-setup.exe
+
+The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper`, adds that folder to the user PATH (the task can be cleared during setup), and registers an uninstaller in Settings > Apps. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `"%LOCALAPPDATA%\Programs\srtstripper\unins000.exe" /VERYSILENT`. The setups are not code-signed, so SmartScreen may ask for confirmation.
+
 ### Windows (PowerShell or cmd)
+
+No installer, standalone exe:
 
 x86_64:
 

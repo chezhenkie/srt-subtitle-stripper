@@ -117,10 +117,41 @@ jobs:
           path: srtstripper/dist/*
           if-no-files-found: error
 
+  windows-installers:
+    name: windows-installers
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: srtstripper-windows-*
+          merge-multiple: true
+
+      - name: install Inno Setup
+        shell: pwsh
+        run: |
+          choco upgrade innosetup --yes --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found: $iscc" }
+          (Get-Item $iscc).VersionInfo.FileVersion
+
+      - name: build installers
+        shell: pwsh
+        run: ./installer/build-installers.ps1 -DistDir dist -OutDir out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-installers
+          path: out/*
+          if-no-files-found: error
+
   release:
     name: release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, windows-installers]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
@@ -147,6 +178,10 @@ jobs:
             - srtstripper-linux-aarch64
             - srtstripper-linux-aarch64-musl: statically linked ARM64 build for Alpine and other non-glibc systems
             - srtstripper-macos-arm64 (Apple Silicon)
+
+            Windows installers (per-user, no admin rights, adds the install folder to the user PATH):
+            - srtstripper-windows-x86_64-setup.exe
+            - srtstripper-windows-aarch64-setup.exe
 
             Usage: `srtstripper "file.srt" [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]`
 
@@ -184,5 +219,7 @@ jobs:
             Install with curl (Windows ARM64, PowerShell or cmd):
 
                 curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64.exe
+
+            The Windows setup executables install to `%LOCALAPPDATA%\Programs\srtstripper` and register an uninstaller in Settings > Apps; silent install with `/VERYSILENT`, add `/TASKS=` to skip the PATH entry.
 
             Full usage, requirements and known presentation deviations are in the README. Changelog: https://github.com/chezhenkie/srt-subtitle-stripper/blob/main/CHANGELOG.md

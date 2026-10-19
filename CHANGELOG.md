@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.3.0]
+
+### Added
+
+- Windows installers `srtstripper-windows-x86_64-setup.exe` and `srtstripper-windows-aarch64-setup.exe`: per-user, no elevation, installs to `%LOCALAPPDATA%\Programs\srtstripper`, adds the folder to the user PATH, registers an uninstaller in Settings > Apps. Built in CI from the Windows release binaries with Inno Setup and attached to releases.
+- `installer/` with the Inno Setup script and `build-installers.ps1`; CI job `windows-installers` feeds the release job, so `SHA256SUMS` covers the setup executables.
+- README Windows install section documents the installer and the standalone exe.
+
 ## [1.2.0]
 
 ### Added
