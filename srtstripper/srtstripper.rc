@@ -13,12 +13,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName",      "westercoder"
       VALUE "FileDescription",  "srtstripper - strip non-alphabetic lines from SRT/text files"
-      VALUE "FileVersion",      "1.1.0.0"
+      VALUE "FileVersion",      "1.1.1.0"
       VALUE "InternalName",     "srtstripper"
       VALUE "LegalCopyright",   "Copyright (c) 2026 westercoder (MIT License)"
       VALUE "OriginalFilename", "srtstripper.exe"
       VALUE "ProductName",      "srtstripper"
-      VALUE "ProductVersion",   "1.1.0.0"
+      VALUE "ProductVersion",   "1.1.1.0"
     END
   END
   BLOCK "VarFileInfo"

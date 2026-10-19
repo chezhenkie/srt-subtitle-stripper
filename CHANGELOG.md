@@ -14,6 +14,10 @@ All notable changes to this project are documented in this file. The format foll
 - CI runs the 120-case golden regression suite on all six targets, including both ARM64 builds.
 - Release builds pinned to Ubuntu 24.04 (x86_64 and ARM64) so the glibc floor does not move with `ubuntu-latest`; workflow actions bumped to checkout v7, upload-artifact v7 and download-artifact v8.
 
+### Fixed
+
+- Windows exe `FileVersion` and `ProductVersion` strings report the crate version (`1.1.1.0`); CI compares the built exe metadata with `Cargo.toml`.
+
 ## [1.1.0]
 
 ### Changed

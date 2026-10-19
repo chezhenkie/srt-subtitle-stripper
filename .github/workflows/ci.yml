@@ -98,6 +98,16 @@ jobs:
             cp "target/${{ matrix.target }}/release/srtstripper" "dist/srtstripper-${{ matrix.platform }}"
           fi
 
+      - name: version metadata
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"$').Matches[0].Groups[1].Value
+          $vi = (Get-Item "dist/srtstripper-windows-x86_64.exe").VersionInfo
+          if ($vi.FileVersion -ne "$ver.0" -or $vi.ProductVersion -ne "$ver.0") {
+            throw "version metadata mismatch: file=$($vi.FileVersion) product=$($vi.ProductVersion) expected=$ver.0"
+          }
+
       - uses: actions/upload-artifact@v7
         with:
           name: srtstripper-${{ matrix.platform }}
