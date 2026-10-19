@@ -49,7 +49,7 @@ Note: cmd and PowerShell only wait for console-subsystem programs. Callers that 
 
 ## Install
 
-Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.0.1` to pin a version.
+Prebuilt binaries are attached to every release; the same commands are in the release text. Replace `latest` with a tag such as `v1.1.0` to pin a version.
 
 ### Linux (x86_64)
 
@@ -86,7 +86,7 @@ The binary is not notarized; files fetched with curl carry no quarantine flag an
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests and an end-to-end smoke on Linux, Windows, macOS and a statically linked musl build for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 120-case golden regression suite and an end-to-end smoke on Linux, Windows, macOS and a statically linked musl build for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries attached.
 
 ## Development
 
