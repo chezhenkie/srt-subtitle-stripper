@@ -50,7 +50,7 @@ $archs = @(
 foreach ($arch in $archs) {
     $input = Join-Path $DistDir $arch.Exe
     if (-not (Test-Path -LiteralPath $input)) { throw "missing input: $input" }
-    $inputVersion = (Get-Item -LiteralPath $input).VersionInfo.FileVersion
+    $inputVersion = (Get-Item -LiteralPath $input).VersionInfo.FileVersion.Trim()
     if ($inputVersion -ne "$Version.0") {
         throw "input version mismatch: $input has $inputVersion, expected $Version.0"
     }
@@ -61,8 +61,10 @@ foreach ($arch in $archs) {
     if ($LASTEXITCODE -ne 0) { throw "ISCC failed for $($arch.Name), exit $LASTEXITCODE" }
     if (-not (Test-Path -LiteralPath $output)) { throw "setup not produced: $output" }
     $setupVersion = (Get-Item -LiteralPath $output).VersionInfo
-    if ($setupVersion.FileVersion -ne "$Version.0" -or $setupVersion.ProductVersion -ne "$Version.0") {
-        throw "setup version mismatch: file=$($setupVersion.FileVersion) product=$($setupVersion.ProductVersion) expected=$Version.0"
+    $setupFile = $setupVersion.FileVersion.Trim()
+    $setupProduct = $setupVersion.ProductVersion.Trim()
+    if ($setupFile -ne "$Version.0" -or $setupProduct -ne "$Version.0") {
+        throw "setup version mismatch: file=$setupFile product=$setupProduct expected=$Version.0"
     }
     Write-Output "built $output"
 }
