@@ -7,7 +7,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Changed
 
 - Default mode and `--numbered-only` collapse consecutive repeated text lines (rolling-caption doublings) to the first occurrence; blank separators between repeats shrink to one. `--numbered` and `--keep-timecodes` are unaffected.
-- Regression suite reworked: `tools/golden_diff.py` runs the binary over the fixture x mode matrix and compares exit codes, stdout, stderr and every produced file against checked-in expected results in `tools/golden.json`; `--update` regenerates them.
+- Regression suite reworked: `tools/golden_diff.py` runs the binary over the fixture x mode matrix and compares exit codes, stdout, stderr and every produced file against checked-in expected results in `tools/golden.json`; `--update` regenerates them. Fixture names are canonicalized on Windows (trailing dots are dropped by the filesystem), so the suite runs on the Windows exe as well.
 - CLI probe reworked: `tools/probe_cli.py` drives the binary with edge argv and prints rc/stdout/stderr for each case.
 
 ### Added

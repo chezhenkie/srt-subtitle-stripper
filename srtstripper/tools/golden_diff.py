@@ -158,6 +158,14 @@ def msgkey(b: bytes) -> str:
     return s
 
 
+def canon(rel: str) -> str:
+    """Filesystem-canonical fixture key. Windows drops trailing dots and
+    spaces from every path component, so the fixture "foo." lands as "foo"."""
+    if os.name != "nt":
+        return rel
+    return "/".join(part.rstrip(". ") for part in rel.split("/"))
+
+
 def populate(sandbox: Path) -> None:
     for name, data in FIXTURES.items():
         p = sandbox / name
@@ -168,16 +176,17 @@ def populate(sandbox: Path) -> None:
 def deltas(root: Path) -> dict:
     """Deviations from the pristine fixture set: added/changed files map to
     their text, removed fixture files map to None."""
+    by_canon = {canon(rel): data for rel, data in FIXTURES.items()}
     out = {}
     for p in sorted(root.rglob("*")):
         if not p.is_file():
             continue
         rel = p.relative_to(root).as_posix()
         cur = p.read_bytes()
-        if FIXTURES.get(rel) != cur:
+        if by_canon.get(canon(rel)) != cur:
             out[rel] = cur.decode("utf-8")
     for rel in FIXTURES:
-        if not (root / rel).is_file():
+        if not (root / rel).is_file() and not (root / canon(rel)).is_file():
             out[rel] = None
     return out
 
