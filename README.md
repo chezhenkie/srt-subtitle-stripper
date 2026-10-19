@@ -119,7 +119,7 @@ ARM64:
     curl.exe -L -O https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64-setup.exe
     .\srtstripper-windows-aarch64-setup.exe
 
-The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper`, adds that folder to the user PATH (the task can be cleared during setup), and registers an uninstaller in Settings > Apps. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `"%LOCALAPPDATA%\Programs\srtstripper\unins000.exe" /VERYSILENT`. The setups are not code-signed, so SmartScreen may ask for confirmation.
+The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper`, adds that folder to the user PATH (the task can be cleared during setup), creates a `srtstripper` shortcut in the Start Menu so the app shows up in All apps, and registers an uninstaller in Settings > Apps. A setup checkbox offers a desktop shortcut. Taskbar pinning cannot be offered: Windows does not allow an installer to pin an app to the taskbar, that is a user action. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `"%LOCALAPPDATA%\Programs\srtstripper\unins000.exe" /VERYSILENT`. The setups are not code-signed, so SmartScreen may ask for confirmation.
 
 ### Windows (PowerShell or cmd)
 

@@ -7,7 +7,8 @@ param(
     [string]$DistDir,
     [string]$OutDir,
     [string]$Version,
-    [string]$Iscc
+    [string]$Iscc,
+    [string]$Arch
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,8 +47,14 @@ $archs = @(
     @{ Name = 'x86_64'; Exe = 'srtstripper-windows-x86_64.exe' },
     @{ Name = 'aarch64'; Exe = 'srtstripper-windows-aarch64.exe' }
 )
+if ($Arch) {
+    $filtered = @($archs | Where-Object { $_.Name -eq $Arch })
+    if ($filtered.Count -ne 1) { throw "unknown -Arch value: $Arch (expected x86_64 or aarch64)" }
+    $archs = $filtered
+}
 
-foreach ($arch in $archs) {
+for ($i = 0; $i -lt $archs.Count; $i++) {
+    $arch = $archs[$i]
     $input = Join-Path $DistDir $arch.Exe
     if (-not (Test-Path -LiteralPath $input)) { throw "missing input: $input" }
     $inputVersion = (Get-Item -LiteralPath $input).VersionInfo.FileVersion.Trim()

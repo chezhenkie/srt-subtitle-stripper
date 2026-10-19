@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.4.1]
+
+### Added
+
+- Windows installer creates a `srtstripper` shortcut in the Start Menu (so the app appears in All apps) and offers a desktop shortcut through a setup checkbox. Taskbar pinning stays unavailable because Windows does not allow installers to pin to the taskbar.
+
 ## [1.4.0]
 
 ### Added
