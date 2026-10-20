@@ -8,7 +8,7 @@ Rolling-caption subtitles repeat each line in overlapping cues before advancing,
 
 - The comparison is exact text equality after decoding; the reference is the last kept line.
 - Blank separators between repeats do not break the run: the run collapses and leaves one blank line.
-- `--timecode` trims each paragraph against the text already emitted: the longest word-boundary overlap at the end of that text is removed, so a rolling cue writes only its new words with its own stamp. A paragraph fully covered by the emitted text is dropped.
+- `--timecode` trims each paragraph against the text already emitted: the longest word-boundary overlap at the end of that text is removed, so a rolling cue writes only its new words. The `[HH:MM:SS]` stamp sits on its own line above the text, and a fully covered paragraph is dropped.
 - The cue stamp is never part of the comparison.
 
 Input:
@@ -29,7 +29,7 @@ Default output:
 Several input files may be given; each is processed in order with the same flags and gets its own PASS line. `--out` is only valid with a single input.
 
 - default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
-- `--timecode`: SRT-aware; one paragraph per cue. Each paragraph is trimmed of the words already shown, so only new text is written with the cue's own stamp; a fully repeated paragraph is dropped. Cannot be combined with `--numbered`.
+- `--timecode`: SRT-aware; one block per cue: a `[HH:MM:SS]` line followed by the cue's new text. Each paragraph is trimmed of the words already shown, so only new text is written under the cue's own stamp; a fully repeated paragraph is dropped. Cannot be combined with `--numbered`.
 - `--numbered`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines and repeated blocks collapse to the first occurrence. Cannot be combined with `--timecode`.
 
 Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`. Existing `--out` parent directories are created.
@@ -119,7 +119,7 @@ ARM64:
     curl.exe -L -O https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64-setup.exe
     .\srtstripper-windows-aarch64-setup.exe
 
-The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper`, adds that folder to the user PATH (the task can be cleared during setup), creates a `srtstripper` shortcut in the Start Menu so the app shows up in All apps, and registers an uninstaller in Settings > Apps. A setup checkbox offers a desktop shortcut. Taskbar pinning cannot be offered: Windows does not allow an installer to pin an app to the taskbar, that is a user action. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `"%LOCALAPPDATA%\Programs\srtstripper\unins000.exe" /VERYSILENT`. The setups are not code-signed, so SmartScreen may ask for confirmation.
+The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper` by default, and the install folder can be changed in the wizard. It adds the install folder to the user PATH (the task can be cleared during setup), creates a `srtstripper` shortcut in the Start Menu so the app shows up in All apps, and registers an uninstaller in Settings > Apps. There is no license page. Taskbar pinning cannot be offered: Windows does not allow an installer to pin an app to the taskbar, that is a user action. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `unins000.exe /VERYSILENT` in the chosen install folder. The setups are not code-signed, so SmartScreen may ask for confirmation.
 
 ### Windows (PowerShell or cmd)
 

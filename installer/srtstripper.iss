@@ -52,7 +52,6 @@ OutputBaseFilename=srtstripper-windows-{#Arch}-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-LicenseFile={#RepoRoot}\LICENSE
 UninstallDisplayIcon={app}\srtstripper.exe
 UninstallDisplayName={#AppName} {#AppVersion}
 VersionInfoVersion={#AppVersion}.0
@@ -69,11 +68,9 @@ Source: "{#RepoRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{userprograms}\srtstripper"; Filename: "{app}\srtstripper.exe"; Comment: "Strip non-alphabetic lines from SRT/text files"
 Name: "{userprograms}\Uninstall srtstripper"; Filename: "{uninstallexe}"; Comment: "Uninstall srtstripper"
-Name: "{userdesktop}\srtstripper"; Filename: "{app}\srtstripper.exe"; Comment: "Strip non-alphabetic lines from SRT/text files"; Tasks: desktopicon
 
 [Tasks]
 Name: "addpath"; Description: "Add srtstripper to the user PATH"; GroupDescription: "Environment:"; Flags: checkedonce
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: checkedonce
 
 [Code]
 const

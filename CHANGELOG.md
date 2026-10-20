@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.3]
+
+### Changed
+
+- `--timecode` writes the `[HH:MM:SS]` stamp on its own line above the text, one block per cue, matching the numbered block layout.
+- A blank line directly after a cue timestamp no longer clears the stamp, so a cue whose text starts with a blank line keeps its timecode and the first block is stamped.
+- Windows installer: the license agreement page is removed; `LICENSE` is still installed next to the exe.
+- Windows installer: the desktop shortcut task is removed.
+
 ## [1.6.2]
 
 ### Fixed

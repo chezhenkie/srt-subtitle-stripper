@@ -476,6 +476,12 @@ impl<'e> Out<'e> {
         let _ = write!(self.buf, "{:05}", n);
         self.items += 1;
     }
+    /// Timecode line on its own, like the numbered block header.
+    fn tc_line(&mut self, tc: Tc<'_>) {
+        self.sep();
+        let _ = write!(self.buf, "[{:02}:{}:{}]", tc.hh, tc.mm, tc.ss);
+        self.items += 1;
+    }
 }
 
 fn write_parts(buf: &mut String, parts: &[&str]) {
@@ -724,21 +730,24 @@ fn tail_push(tail: &mut String, text: &str) {
     }
 }
 
-/// Emit one paragraph, stripped of the words already shown at its start. A
-/// paragraph fully covered by previous text disappears; a rolling cue emits
-/// only its new words with its own stamp.
+/// Emit one paragraph block, stripped of the words already shown at its start.
+/// The stamp gets its own line above the text, like the numbered block header,
+/// and blocks are separated by one blank line. A paragraph fully covered by
+/// previous text disappears; a rolling cue emits only its new words with its
+/// own stamp.
 fn emit_para(o: &mut Out, tail: &mut String, stamp: Option<Tc<'_>>, text: &str) {
     let l = overlap_len(tail, text);
     let rest = text[l..].trim_start_matches(' ');
     if rest.is_empty() {
         return;
     }
-    let mut line = String::with_capacity(rest.len() + 16);
-    if let Some(t) = stamp {
-        let _ = write!(line, "[{:02}:{}:{}] ", t.hh, t.mm, t.ss);
+    if o.items > 0 {
+        o.blank();
     }
-    line.push_str(rest);
-    o.text(&line);
+    if let Some(t) = stamp {
+        o.tc_line(t);
+    }
+    o.text(rest);
     tail_push(tail, rest);
 }
 
@@ -766,12 +775,14 @@ fn flush_cue(
     }
 }
 
-/// Timecode pipeline: one "[HH:MM:SS] text" item per cue; text outside cues
-/// becomes its own item. Rolling captions repeat the previous words before
-/// appending new ones, so each paragraph is trimmed against the rolling tail
-/// of already shown text: only the new words are emitted, with the cue's own
-/// stamp. A paragraph fully contained in earlier text disappears. Buffers are
-/// reused via clear().
+/// Timecode pipeline: one block per cue, an "[HH:MM:SS]" line above the text;
+/// text outside cues becomes its own block. Rolling captions repeat the
+/// previous words before appending new ones, so each paragraph is trimmed
+/// against the rolling tail of already shown text: only the new words are
+/// emitted, under the cue's own stamp. A paragraph fully contained in earlier
+/// text disappears. A blank line directly after a cue timestamp is part of the
+/// cue's leading whitespace and must not clear the stamp. Buffers are reused
+/// via clear().
 fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
     let mut o = Out::new(sep, cap);
     let mut stamp: Option<Tc<'_>> = None;
@@ -779,16 +790,23 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
     let mut plain: Vec<&str> = Vec::new();
     let mut tail = String::new();
     let mut text = String::new();
+    let mut after_tc = false;
     for &line in lines {
         if let Some(tc) = find_timecode(line) {
             flush_plain(&mut o, &mut plain, &mut tail, &mut text);
             flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
             stamp = Some(tc);
+            after_tc = true;
         } else if is_blank(line) {
-            flush_plain(&mut o, &mut plain, &mut tail, &mut text);
-            flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
-            stamp = None;
+            if after_tc {
+                after_tc = false;
+            } else {
+                flush_plain(&mut o, &mut plain, &mut tail, &mut text);
+                flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
+                stamp = None;
+            }
         } else if has_letter(line) {
+            after_tc = false;
             let t = trim_blanks(line);
             if stamp.is_none() {
                 plain.push(t);
@@ -1391,9 +1409,7 @@ fn run_one(input: &Path, out: &Option<PathBuf>, keep: bool, numbered: bool) -> u
     let cap = text.len() + text.len() / 8 + 64;
 
     let (body, items, mode, suffix) = if keep {
-        // Separator: blank line between items in timecode mode, eol otherwise.
-        let sep = if eol == "\r\n" { "\r\n\r\n" } else { "\n\n" };
-        let (b, n) = build_timecodes(&lines, sep, cap);
+        let (b, n) = build_timecodes(&lines, eol, cap);
         (b, n, "timecode", " - timecodes".to_string())
     } else if numbered {
         let (b, n) = build_numbered_only(&lines, eol, cap);
@@ -1681,20 +1697,20 @@ mod tests {
             "00:00:07,000 --> 00:00:08,000",
             "same text",
         ];
-        let (out, items) = build_timecodes(&lines, "\n\n", 512);
+        let (out, items) = build_timecodes(&lines, "\n", 512);
         assert_eq!(
             out,
-            "[00:00:01] same text\n\n[00:00:05] other text\n\n[00:00:07] same text"
+            "[00:00:01]\nsame text\n\n[00:00:05]\nother text\n\n[00:00:07]\nsame text"
         );
-        assert_eq!(items, 3);
+        assert_eq!(items, 8);
     }
 
     #[test]
     fn dedupe_timecodes_plain_text_repeats() {
         let lines = ["hello", "", "hello", "", "world"];
-        let (out, items) = build_timecodes(&lines, "\n\n", 256);
+        let (out, items) = build_timecodes(&lines, "\n", 256);
         assert_eq!(out, "hello\n\nworld");
-        assert_eq!(items, 2);
+        assert_eq!(items, 3);
     }
 
     #[test]
@@ -1719,12 +1735,12 @@ mod tests {
             "00:00:07,000 --> 00:00:08,000",
             "gamma delta epsilon zeta",
         ];
-        let (out, items) = build_timecodes(&lines, "\n\n", 512);
+        let (out, items) = build_timecodes(&lines, "\n", 512);
         assert_eq!(
             out,
-            "[00:00:01] alpha beta\n\n[00:00:03] gamma delta\n\n[00:00:07] epsilon zeta"
+            "[00:00:01]\nalpha beta\n\n[00:00:03]\ngamma delta\n\n[00:00:07]\nepsilon zeta"
         );
-        assert_eq!(items, 3);
+        assert_eq!(items, 8);
     }
 
     #[test]
@@ -1739,8 +1755,31 @@ mod tests {
             "00:00:03,000 --> 00:00:04,000",
             "There is more",
         ];
-        let (out, _) = build_timecodes(&lines, "\n\n", 256);
-        assert_eq!(out, "[00:00:01] The\n\n[00:00:03] There is more");
+        let (out, _) = build_timecodes(&lines, "\n", 256);
+        assert_eq!(out, "[00:00:01]\nThe\n\n[00:00:03]\nThere is more");
+    }
+
+    #[test]
+    fn timecodes_first_cue_keeps_stamp_across_leading_blank() {
+        // A cue whose text starts with a blank line must keep its stamp: the
+        // blank belongs to the cue, it is not a cue separator.
+        let lines = [
+            "1",
+            "00:00:00,400 --> 00:00:03,190",
+            " ",
+            "The Earth is old",
+            "",
+            "2",
+            "00:00:03,200 --> 00:00:05,110",
+            "The Earth is old",
+            "life goes on",
+        ];
+        let (out, items) = build_timecodes(&lines, "\n", 512);
+        assert_eq!(
+            out,
+            "[00:00:00]\nThe Earth is old\n\n[00:00:03]\nlife goes on"
+        );
+        assert_eq!(items, 5);
     }
 
     #[test]
@@ -1748,9 +1787,9 @@ mod tests {
         // The stamp is not part of the comparison: cue text equal to the
         // following plain text collapses into the cue paragraph.
         let lines = ["00:00:01,000 --> 00:00:02,000", "hello", "", "hello"];
-        let (out, items) = build_timecodes(&lines, "\n\n", 256);
-        assert_eq!(out, "[00:00:01] hello");
-        assert_eq!(items, 1);
+        let (out, items) = build_timecodes(&lines, "\n", 256);
+        assert_eq!(out, "[00:00:01]\nhello");
+        assert_eq!(items, 2);
     }
 
     fn parse(argv: &[&str]) -> Parsed {
