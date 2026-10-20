@@ -51,6 +51,11 @@ FIXTURES = {
         b"1\n00:00:01,000 --> 00:00:03,500\nHello world.\n\n"
         b"2\n00:00:04,000 --> 00:00:06,000\nSecond line\n\n"
     ),
+    "doubling-blocks.srt": (
+        b"1\n00:00:01,000 --> 00:00:02,000\nalpha beta\ngamma delta\n\n"
+        b"2\n00:00:03,000 --> 00:00:04,000\nalpha beta\ngamma delta\n\n"
+        b"3\n00:00:05,000 --> 00:00:06,000\nepsilon\n"
+    ),
     "mixed-eol.srt": (
         b"alpha\r\nbeta\ngamma\r\n\r\ndelta\n"
     ),

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.1]
+
+### Fixed
+
+- `--numbered` collapses repeated text blocks, not only repeated single lines. The comparison is on the merged block text, so a repeated multi-line cue is dropped whole.
+
 ## [1.6.0]
 
 ### Changed

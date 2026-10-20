@@ -582,10 +582,11 @@ fn build_default(
     (o.buf, o.items)
 }
 
-/// Numbered-only pipeline: reblock the default items at "" separators and put
-/// an index line ("00001") above each block; consecutive repeats collapse like
-/// in the default mode. Trailing/leading blank items are dropped by the block
-/// logic, matching the trailing-blank trim.
+/// Numbered pipeline: reblock the default items at "" separators and put an
+/// index line ("00001") above each block. Two collapses apply: a line equal to
+/// the last kept line is skipped, and a block whose merged text equals the last
+/// kept block is dropped whole. The block check is what a per-line comparison
+/// misses: a repeated rolling-caption cue with two or more lines would survive.
 fn build_numbered_only(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
     #[derive(PartialEq)]
     enum Last {
@@ -598,9 +599,20 @@ fn build_numbered_only(lines: &[&str], sep: &str, cap: usize) -> (String, usize)
     let mut dropped = false;
     let mut pending_blank = false;
     let mut dedup = Dedup::new(true);
-    let mut block = 0usize;
+    let mut block: Vec<&str> = Vec::new();
+    let mut text = String::new();
+    let mut last_block: Option<String> = None;
+    let mut count = 0usize;
     for &line in lines {
         if is_blank(line) {
+            flush_block(
+                &mut o,
+                &mut block,
+                &mut text,
+                &mut last_block,
+                &mut count,
+                &mut pending_blank,
+            );
             if last != Last::Blank {
                 pending_blank = true;
                 last = Last::Blank;
@@ -608,18 +620,20 @@ fn build_numbered_only(lines: &[&str], sep: &str, cap: usize) -> (String, usize)
             dropped = false;
         } else if has_letter(line) {
             if last == Last::Text && dropped {
+                // Dropped scaffolding separated two text runs: close the block
+                // here and insert a blank before the next one.
+                flush_block(
+                    &mut o,
+                    &mut block,
+                    &mut text,
+                    &mut last_block,
+                    &mut count,
+                    &mut pending_blank,
+                );
                 pending_blank = true;
             }
             if !dedup.repeat(line) {
-                if block == 0 || pending_blank {
-                    if pending_blank && o.items > 0 {
-                        o.blank();
-                    }
-                    block += 1;
-                    o.num_line(block);
-                    pending_blank = false;
-                }
-                o.text(line);
+                block.push(line);
             }
             last = Last::Text;
             dropped = false;
@@ -627,7 +641,44 @@ fn build_numbered_only(lines: &[&str], sep: &str, cap: usize) -> (String, usize)
             dropped = true;
         }
     }
+    flush_block(
+        &mut o,
+        &mut block,
+        &mut text,
+        &mut last_block,
+        &mut count,
+        &mut pending_blank,
+    );
     (o.buf, o.items)
+}
+
+/// Emit one numbered block unless its merged text equals the last kept block.
+fn flush_block(
+    o: &mut Out,
+    block: &mut Vec<&str>,
+    text: &mut String,
+    last_block: &mut Option<String>,
+    count: &mut usize,
+    pending_blank: &mut bool,
+) {
+    if block.is_empty() {
+        return;
+    }
+    text.clear();
+    write_parts(text, block);
+    if last_block.as_deref() != Some(text.as_str()) {
+        if *pending_blank && o.items > 0 {
+            o.blank();
+        }
+        *count += 1;
+        o.num_line(*count);
+        for &line in block.iter() {
+            o.text(line);
+        }
+        *pending_blank = false;
+        *last_block = Some(text.clone());
+    }
+    block.clear();
 }
 
 fn flush_plain(o: &mut Out, plain: &mut Vec<&str>, dedup: &mut Dedup, text: &mut String) {
@@ -1526,6 +1577,29 @@ mod tests {
         let lines = ["first", "", "first", "", "first", "second", "", "first"];
         let (out, _) = build_numbered_only(&lines, "\n", 256);
         assert_eq!(out, "00001\nfirst\n\n00002\nsecond\n\n00003\nfirst");
+    }
+
+    #[test]
+    fn dedupe_numbered_multiline_blocks() {
+        // Cues are blocks: a two-line cue repeated verbatim must collapse as a
+        // whole. A per-line comparison would keep both lines of the repeat.
+        let lines = [
+            "alpha beta",
+            "gamma delta",
+            "",
+            "alpha beta",
+            "gamma delta",
+            "",
+            "epsilon",
+            "",
+            "alpha beta",
+            "gamma delta",
+        ];
+        let (out, _) = build_numbered_only(&lines, "\n", 512);
+        assert_eq!(
+            out,
+            "00001\nalpha beta\ngamma delta\n\n00002\nepsilon\n\n00003\nalpha beta\ngamma delta"
+        );
     }
 
     #[test]

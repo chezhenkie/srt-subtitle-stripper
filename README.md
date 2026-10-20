@@ -29,7 +29,7 @@ Several input files may be given; each is processed in order with the same flags
 
 - default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
 - `--timecode`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`; consecutive paragraphs with equal text collapse to the first occurrence, which keeps its own stamp. Cannot be combined with `--numbered`.
-- `--numbered`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines collapse to the first occurrence. Cannot be combined with `--timecode`.
+- `--numbered`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines and repeated blocks collapse to the first occurrence. Cannot be combined with `--timecode`.
 
 Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`. Existing `--out` parent directories are created.
 
@@ -139,7 +139,7 @@ ARM64:
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 94-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 97-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
 
 ## Development
 

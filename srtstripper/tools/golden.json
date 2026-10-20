@@ -231,6 +231,30 @@
   "stderr": "FAIL: input not found: sub\n",
   "stdout": ""
  },
+ "doubling-blocks.srt:default": {
+  "files": {
+   "doubling-blocks - alpha.txt": "alpha beta\ngamma delta\n\nalpha beta\ngamma delta\n\nepsilon\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=default, wrote 7 lines from 13 input lines -> doubling-blocks - alpha.txt\n"
+ },
+ "doubling-blocks.srt:numbered": {
+  "files": {
+   "doubling-blocks - numbered.txt": "00001\nalpha beta\ngamma delta\n\n00002\nepsilon\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=numbered, wrote 6 lines from 13 input lines -> doubling-blocks - numbered.txt\n"
+ },
+ "doubling-blocks.srt:timecode": {
+  "files": {
+   "doubling-blocks - timecodes.txt": "[00:00:01] alpha beta gamma delta\n\n[00:00:05] epsilon\n"
+  },
+  "rc": 0,
+  "stderr": "",
+  "stdout": "PASS: mode=timecode, wrote 2 lines from 13 input lines -> doubling-blocks - timecodes.txt\n"
+ },
  "doubling.srt:default": {
   "files": {
    "doubling - alpha.txt": "\nfirst line here\n\nsecond line here\n\nthird line here\n\nno\n\nlater repeat\n\nthird line here\n"
