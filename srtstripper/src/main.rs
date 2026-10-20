@@ -827,6 +827,13 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
 const USAGE: &str =
     "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]";
 
+const EXAMPLES: &str = "examples:
+  srtstripper video.srt                  default text mode
+  srtstripper video.srt --timecode       SRT cues, one stamp per cue
+  srtstripper video.srt --numbered       number line per block, no timecodes
+  srtstripper video.srt --out clean.txt  custom output name
+  srtstripper a.srt b.srt                several inputs, one PASS line each";
+
 fn help_text() -> String {
     format!(
         "{USAGE}
@@ -1477,7 +1484,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Parsed::Error(msg) => {
-            print_err(&format!("{USAGE}\nsrtstripper: error: {msg}"));
+            print_err(&format!("{USAGE}\nsrtstripper: error: {msg}\n\n{EXAMPLES}"));
             ExitCode::from(2)
         }
         Parsed::Args(args) => {
@@ -1504,10 +1511,12 @@ fn main() -> ExitCode {
                     "srtstripper: error: --numbered writes number lines and no ",
                     "timecodes; drop --timecode"
                 ));
+                print_err(&format!("\n{EXAMPLES}"));
                 return ExitCode::from(2);
             }
             if args.out.is_some() && args.inputs.len() > 1 {
                 print_err("srtstripper: error: --out can only be used with a single input");
+                print_err(&format!("\n{EXAMPLES}"));
                 return ExitCode::from(2);
             }
 

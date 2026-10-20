@@ -134,13 +134,13 @@
  "config-cli-override": {
   "files": {},
   "rc": 2,
-  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n",
+  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "config-cli-override-mutex": {
   "files": {},
   "rc": 2,
-  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n",
+  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "config-empty": {
@@ -314,7 +314,7 @@
  "flag-with-value": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --timecode: ignored explicit argument 'x'\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --timecode: ignored explicit argument 'x'\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "foo.:default": {
@@ -459,13 +459,13 @@
  "multi-out-error": {
   "files": {},
   "rc": 2,
-  "stderr": "srtstripper: error: --out can only be used with a single input\n",
+  "stderr": "srtstripper: error: --out can only be used with a single input\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "mutex": {
   "files": {},
   "rc": 2,
-  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n",
+  "stderr": "srtstripper: error: --numbered writes number lines and no timecodes; drop --timecode\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "newline-only.txt:default": {
@@ -495,7 +495,7 @@
  "no-args": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "no-letters.txt:default": {
@@ -579,13 +579,13 @@
  "out-missing-val": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "out-opt-like-val": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: argument --out: expected one argument\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "sub/inner.srt:default": {
@@ -711,19 +711,19 @@
  "unknown-long": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: --bogus\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: --bogus\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "unknown-only": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: the following arguments are required: input\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  },
  "unknown-short": {
   "files": {},
   "rc": 2,
-  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: -x\n",
+  "stderr": "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]\nsrtstripper: error: unrecognized arguments: -x\n\nexamples:\n  srtstripper video.srt                  default text mode\n  srtstripper video.srt --timecode       SRT cues, one stamp per cue\n  srtstripper video.srt --numbered       number line per block, no timecodes\n  srtstripper video.srt --out clean.txt  custom output name\n  srtstripper a.srt b.srt                several inputs, one PASS line each\n",
   "stdout": ""
  }
 }
