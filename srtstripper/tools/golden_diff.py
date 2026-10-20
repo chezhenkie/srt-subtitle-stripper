@@ -108,7 +108,6 @@ MODES = {
     "default": [],
     "numbered": ["--numbered"],
     "timecodes": ["--keep-timecodes"],
-    "tc+num": ["--keep-timecodes", "--numbered"],
     "num-only": ["--numbered-only"],
 }
 
@@ -134,6 +133,7 @@ EXTRA_CASES = [
     ("extra-positional", ["basic.srt", "extra.txt"]),
     ("mutex", ["--numbered", "--numbered-only", "basic.srt"]),
     ("keep+numonly", ["--numbered-only", "--keep-timecodes", "basic.srt"]),
+    ("keep+num", ["--keep-timecodes", "--numbered", "basic.srt"]),
     ("flag-with-value", ["--numbered=x", "basic.srt"]),
     ("help", ["-h"]),
     ("help-prefix", ["--hel"]),

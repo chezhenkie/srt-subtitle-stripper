@@ -476,47 +476,52 @@ impl<'e> Out<'e> {
         let _ = write!(self.buf, "{:05}", n);
         self.items += 1;
     }
-    fn para(&mut self, number: Option<usize>, tc: Option<Tc<'_>>, parts: &[&str]) {
+    /// Emit a paragraph whose text was already built (dedup compares the
+    /// text, then the paragraph is emitted with its own stamp).
+    fn para_text(&mut self, tc: Option<Tc<'_>>, text: &str) {
         self.sep();
-        if let Some(n) = number {
-            let _ = write!(self.buf, "{:05} ", n);
-        }
         if let Some(t) = tc {
             let _ = write!(self.buf, "[{:02}:{}:{}] ", t.hh, t.mm, t.ss);
         }
-        for (i, p) in parts.iter().enumerate() {
-            if i > 0 {
-                self.buf.push(' ');
-            }
-            self.buf.push_str(p);
-        }
+        self.buf.push_str(text);
         self.items += 1;
     }
 }
 
-/// Consecutive-repeat suppression for the text modes (plain default and
-/// --numbered-only). A text line identical to the previous kept line is
-/// dropped; blank separator state is left untouched, so repeats stay
-/// recognized across blank runs and the separators shrink to one.
-struct Dedup<'a> {
-    on: bool,
-    last: Option<&'a str>,
+fn write_parts(buf: &mut String, parts: &[&str]) {
+    for (i, p) in parts.iter().enumerate() {
+        if i > 0 {
+            buf.push(' ');
+        }
+        buf.push_str(p);
+    }
 }
 
-impl<'a> Dedup<'a> {
+/// Consecutive-repeat suppression for the text modes (plain default,
+/// --numbered-only) and the timecode mode. A text identical to the previous
+/// kept text is dropped; blank separator state is left untouched, so repeats
+/// stay recognized across blank runs and the separators shrink to one. In
+/// the timecode mode the compared text is the merged paragraph text; the
+/// stamp is separate metadata and never part of the comparison.
+struct Dedup {
+    on: bool,
+    last: Option<String>,
+}
+
+impl Dedup {
     fn new(on: bool) -> Self {
         Dedup { on, last: None }
     }
 
-    /// True when `line` repeats the previous kept line and must be dropped.
-    fn repeat(&mut self, line: &'a str) -> bool {
+    /// True when `text` repeats the previous kept text and must be dropped.
+    fn repeat(&mut self, text: &str) -> bool {
         if !self.on {
             return false;
         }
-        if self.last == Some(line) {
+        if self.last.as_deref() == Some(text) {
             return true;
         }
-        self.last = Some(line);
+        self.last = Some(text.to_string());
         false
     }
 }
@@ -625,50 +630,54 @@ fn build_numbered_only(lines: &[&str], sep: &str, cap: usize) -> (String, usize)
     (o.buf, o.items)
 }
 
-fn flush_plain(o: &mut Out, n: &mut usize, numbered: bool, plain: &mut Vec<&str>) {
+fn flush_plain(o: &mut Out, plain: &mut Vec<&str>, dedup: &mut Dedup, text: &mut String) {
     if !plain.is_empty() {
-        if numbered {
-            *n += 1;
+        text.clear();
+        write_parts(text, plain);
+        if !dedup.repeat(text) {
+            o.para_text(None, text);
         }
-        let number = if numbered { Some(*n) } else { None };
-        o.para(number, None, plain);
         plain.clear();
     }
 }
 
 fn flush_cue(
     o: &mut Out,
-    n: &mut usize,
-    numbered: bool,
     stamp: Option<Tc<'_>>,
     cue: &mut Vec<&str>,
+    dedup: &mut Dedup,
+    text: &mut String,
 ) {
     if !cue.is_empty() {
-        if numbered {
-            *n += 1;
+        text.clear();
+        write_parts(text, cue);
+        if !dedup.repeat(text) {
+            o.para_text(stamp, text);
         }
-        let number = if numbered { Some(*n) } else { None };
-        o.para(number, stamp, cue);
         cue.clear();
     }
 }
 
 /// Timecode pipeline: one "[HH:MM:SS] merged text" item per cue; text outside
-/// cues becomes its own item. Buffers are reused via clear().
-fn build_timecodes(lines: &[&str], sep: &str, cap: usize, numbered: bool) -> (String, usize) {
+/// cues becomes its own item. Repeat collapsing compares the merged text
+/// only: a paragraph whose text equals the previous kept paragraph's text is
+/// dropped, and the kept paragraph keeps its own stamp. Buffers are reused
+/// via clear().
+fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
     let mut o = Out::new(sep, cap);
-    let mut n = 0usize;
     let mut stamp: Option<Tc<'_>> = None;
     let mut cue: Vec<&str> = Vec::new();
     let mut plain: Vec<&str> = Vec::new();
+    let mut dedup = Dedup::new(true);
+    let mut text = String::new();
     for &line in lines {
         if let Some(tc) = find_timecode(line) {
-            flush_plain(&mut o, &mut n, numbered, &mut plain);
-            flush_cue(&mut o, &mut n, numbered, stamp, &mut cue);
+            flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
+            flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
             stamp = Some(tc);
         } else if is_blank(line) {
-            flush_plain(&mut o, &mut n, numbered, &mut plain);
-            flush_cue(&mut o, &mut n, numbered, stamp, &mut cue);
+            flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
+            flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
             stamp = None;
         } else if has_letter(line) {
             let t = trim_blanks(line);
@@ -679,8 +688,8 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize, numbered: bool) -> (St
             }
         }
     }
-    flush_plain(&mut o, &mut n, numbered, &mut plain);
-    flush_cue(&mut o, &mut n, numbered, stamp, &mut cue);
+    flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
+    flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
     (o.buf, o.items)
 }
 
@@ -695,15 +704,15 @@ fn help_text() -> String {
     format!(
         "{USAGE}
 
-Strip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.
+Strip lines without letters; collapse consecutive repeats in the default, numbered-only and timecode modes; keep blank separators; optional SRT timecodes.
 
 positional arguments:
   input              input file (read only); give several or drop them onto the exe
 
 options:
   -h, --help         show this help message and exit
-  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged
-  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)
+  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged; repeated text collapses
+  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...); not with --keep-timecodes
   --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept
   --out OUT          output file (default: name derived from input); single input only
 
@@ -1304,18 +1313,8 @@ fn run_one(
     let (body, items, mode, suffix) = if keep {
         // Separator: blank line between items in timecode mode, eol otherwise.
         let sep = if eol == "\r\n" { "\r\n\r\n" } else { "\n\n" };
-        let (b, n) = build_timecodes(&lines, sep, cap, numbered);
-        let mode = if numbered {
-            "keep-timecodes+numbered"
-        } else {
-            "keep-timecodes"
-        };
-        let suffix = if numbered {
-            " - timecodes numbered"
-        } else {
-            " - timecodes"
-        };
-        (b, n, mode, suffix.to_string())
+        let (b, n) = build_timecodes(&lines, sep, cap);
+        (b, n, "keep-timecodes", " - timecodes".to_string())
     } else if numbered_only {
         let (b, n) = build_numbered_only(&lines, eol, cap);
         (b, n, "numbered-only", " - numbered".to_string())
@@ -1418,6 +1417,13 @@ fn main() -> ExitCode {
                 print_err(concat!(
                     "srtstripper: error: --numbered-only writes number lines and no ",
                     "timecodes; drop --keep-timecodes"
+                ));
+                return ExitCode::from(2);
+            }
+            if cfg.numbered && cfg.keep_timecodes {
+                print_err(concat!(
+                    "srtstripper: error: --keep-timecodes writes timecodes and no ",
+                    "line numbers; drop --numbered"
                 ));
                 return ExitCode::from(2);
             }
@@ -1572,6 +1578,53 @@ mod tests {
         let lines = ["first", "", "first", "", "first", "second", "", "first"];
         let (out, _) = build_numbered_only(&lines, "\n", 256);
         assert_eq!(out, "00001\nfirst\n\n00002\nsecond\n\n00003\nfirst");
+    }
+
+    #[test]
+    fn dedupe_timecodes_collapses_repeated_cue_text() {
+        // Consecutive cues with equal text collapse to the first occurrence,
+        // which keeps its own stamp; a non-consecutive repeat is kept.
+        let lines = [
+            "1",
+            "00:00:01,000 --> 00:00:02,000",
+            "same text",
+            "",
+            "2",
+            "00:00:03,000 --> 00:00:04,000",
+            "same text",
+            "",
+            "3",
+            "00:00:05,000 --> 00:00:06,000",
+            "other text",
+            "",
+            "4",
+            "00:00:07,000 --> 00:00:08,000",
+            "same text",
+        ];
+        let (out, items) = build_timecodes(&lines, "\n\n", 512);
+        assert_eq!(
+            out,
+            "[00:00:01] same text\n\n[00:00:05] other text\n\n[00:00:07] same text"
+        );
+        assert_eq!(items, 3);
+    }
+
+    #[test]
+    fn dedupe_timecodes_plain_text_repeats() {
+        let lines = ["hello", "", "hello", "", "world"];
+        let (out, items) = build_timecodes(&lines, "\n\n", 256);
+        assert_eq!(out, "hello\n\nworld");
+        assert_eq!(items, 2);
+    }
+
+    #[test]
+    fn dedupe_timecodes_text_compared_without_stamp() {
+        // The stamp is not part of the comparison: cue text equal to the
+        // following plain text collapses into the cue paragraph.
+        let lines = ["00:00:01,000 --> 00:00:02,000", "hello", "", "hello"];
+        let (out, items) = build_timecodes(&lines, "\n\n", 256);
+        assert_eq!(out, "[00:00:01] hello");
+        assert_eq!(items, 1);
     }
 
     fn parse(argv: &[&str]) -> Parsed {

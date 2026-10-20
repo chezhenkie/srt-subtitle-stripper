@@ -88,8 +88,8 @@ jobs:
           test -s "sample - alpha.txt"
           grep -Fq "Hello smoke test." "sample - alpha.txt"
           if grep -q "1234" "sample - alpha.txt"; then exit 1; fi
-          "$BIN" --keep-timecodes --numbered sample.srt
-          grep -Fq "00001 [00:00:01] Hello smoke test." "sample - timecodes numbered.txt"
+          "$BIN" --keep-timecodes sample.srt
+          grep -Fq "[00:00:01] Hello smoke test." "sample - timecodes.txt"
           printf '1\n00:00:02,000 --> 00:00:03,000\nSecond smoke.\n' > sample2.srt
           "$BIN" sample.srt sample2.srt
           test -s "sample2 - alpha.txt"

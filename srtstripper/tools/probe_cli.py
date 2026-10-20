@@ -48,6 +48,7 @@ CASES = [
     ("extra-positional", ["basic.srt", "extra.txt"]),
     ("mutex", ["--numbered", "--numbered-only", "basic.srt"]),
     ("keep+numonly", ["--numbered-only", "--keep-timecodes", "basic.srt"]),
+    ("keep+num", ["--keep-timecodes", "--numbered", "basic.srt"]),
     ("flag-with-value", ["--numbered=x", "basic.srt"]),
     ("help", ["-h"]),
     ("help-prefix", ["--hel"]),

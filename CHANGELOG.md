@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.5.0]
+
+### Added
+
+- `--keep-timecodes` collapses consecutive repeated paragraphs to the first occurrence. The comparison is on the merged paragraph text only; the cue stamp is not part of it, and the kept paragraph keeps its own stamp.
+
+### Removed
+
+- The `--keep-timecodes` + `--numbered` combination is rejected with a usage error (`srtstripper: error: --keep-timecodes writes timecodes and no line numbers; drop --numbered`); the `keep-timecodes+numbered` mode no longer exists.
+
 ## [1.4.1]
 
 ### Added

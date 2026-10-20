@@ -23,14 +23,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 1 input lines -> .hidden - alpha numbered.txt\n"
  },
- ".hidden:tc+num": {
-  "files": {
-   ".hidden - timecodes numbered.txt": "00001 alpha\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 1 input lines -> .hidden - timecodes numbered.txt\n"
- },
  ".hidden:timecodes": {
   "files": {
    ".hidden - timecodes.txt": "alpha\n"
@@ -69,14 +61,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 1 input lines -> archive.tar - alpha numbered.txt\n"
  },
- "archive.tar.gz:tc+num": {
-  "files": {
-   "archive.tar - timecodes numbered.txt": "00001 beta\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 1 input lines -> archive.tar - timecodes numbered.txt\n"
- },
  "archive.tar.gz:timecodes": {
   "files": {
    "archive.tar - timecodes.txt": "beta\n"
@@ -108,14 +92,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 6 lines from 14 input lines -> basic - alpha numbered.txt\n"
- },
- "basic.srt:tc+num": {
-  "files": {
-   "basic - timecodes numbered.txt": "00001 [00:00:01] Hello world.\r\n\r\n00002 [00:00:04] Second cue line one second cue line two\r\n\r\n00003 [00:00:07] OK.\r\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 3 lines from 14 input lines -> basic - timecodes numbered.txt\n"
  },
  "basic.srt:timecodes": {
   "files": {
@@ -149,14 +125,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 6 lines from 12 input lines -> blank-runs - alpha numbered.txt\n"
  },
- "blank-runs.txt:tc+num": {
-  "files": {
-   "blank-runs - timecodes numbered.txt": "00001 text one line two\n\n00002 text three\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 2 lines from 12 input lines -> blank-runs - timecodes numbered.txt\n"
- },
  "blank-runs.txt:timecodes": {
   "files": {
    "blank-runs - timecodes.txt": "text one line two\n\ntext three\n"
@@ -189,14 +157,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 6 lines from 6 input lines -> bom - alpha numbered.txt\n"
  },
- "bom.srt:tc+num": {
-  "files": {
-   "bom - timecodes numbered.txt": "00001 \u00c9t\u00e9 and \u4e2d\u6587\n\n00002 [12:\u0663\u0664:\u0665\u0666] \u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064a\u0643\u0645\n\n00003 \u00b2 line\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 3 lines from 6 input lines -> bom - timecodes numbered.txt\n"
- },
  "bom.srt:timecodes": {
   "files": {
    "bom - timecodes.txt": "\u00c9t\u00e9 and \u4e2d\u6587\n\n[12:\u0663\u0664:\u0665\u0666] \u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064a\u0643\u0645\n\n\u00b2 line\n"
@@ -226,12 +186,10 @@
   "stdout": "PASS: mode=default+numbered, wrote 6 lines from 14 input lines -> basic - alpha numbered.txt\n"
  },
  "config-cli-override": {
-  "files": {
-   "basic - timecodes numbered.txt": "00001 [00:00:01] Hello world.\r\n\r\n00002 [00:00:04] Second cue line one second cue line two\r\n\r\n00003 [00:00:07] OK.\r\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 3 lines from 14 input lines -> basic - timecodes numbered.txt\n"
+  "files": {},
+  "rc": 2,
+  "stderr": "srtstripper: error: --keep-timecodes writes timecodes and no line numbers; drop --numbered\n",
+  "stdout": ""
  },
  "config-cli-override-mutex": {
   "files": {},
@@ -317,14 +275,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 4 lines from 4 input lines -> cp1252 - alpha numbered.txt\n"
  },
- "cp1252.srt:tc+num": {
-  "files": {
-   "cp1252 - timecodes numbered.txt": "00001 caf\u00e9 quote\u2019s here second line\n\n00002 third\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 2 lines from 4 input lines -> cp1252 - timecodes numbered.txt\n"
- },
  "cp1252.srt:timecodes": {
   "files": {
    "cp1252 - timecodes.txt": "caf\u00e9 quote\u2019s here second line\n\nthird\n"
@@ -375,21 +325,13 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 22 lines from 42 input lines -> doubling - alpha numbered.txt\n"
  },
- "doubling.srt:tc+num": {
-  "files": {
-   "doubling - timecodes numbered.txt": "00001 first line here\n\n00002 [00:00:03] first line here\n\n00003 [00:00:03] first line here second line here\n\n00004 [00:00:05] second line here\n\n00005 [00:00:05] second line here third line here\n\n00006 [00:00:07] no no no\n\n00007 [00:00:09] later repeat\n\n00008 [00:00:11] later repeat\n\n00009 [00:00:13] third line here\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 9 lines from 42 input lines -> doubling - timecodes numbered.txt\n"
- },
  "doubling.srt:timecodes": {
   "files": {
-   "doubling - timecodes.txt": "first line here\n\n[00:00:03] first line here\n\n[00:00:03] first line here second line here\n\n[00:00:05] second line here\n\n[00:00:05] second line here third line here\n\n[00:00:07] no no no\n\n[00:00:09] later repeat\n\n[00:00:11] later repeat\n\n[00:00:13] third line here\n"
+   "doubling - timecodes.txt": "first line here\n\n[00:00:03] first line here second line here\n\n[00:00:05] second line here\n\n[00:00:05] second line here third line here\n\n[00:00:07] no no no\n\n[00:00:09] later repeat\n\n[00:00:13] third line here\n"
   },
   "rc": 0,
   "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes, wrote 9 lines from 42 input lines -> doubling - timecodes.txt\n"
+  "stdout": "PASS: mode=keep-timecodes, wrote 7 lines from 42 input lines -> doubling - timecodes.txt\n"
  },
  "empty.txt:default": {
   "files": {
@@ -414,14 +356,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 0 lines from 0 input lines -> empty - alpha numbered.txt\n"
- },
- "empty.txt:tc+num": {
-  "files": {
-   "empty - timecodes numbered.txt": ""
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 0 lines from 0 input lines -> empty - timecodes numbered.txt\n"
  },
  "empty.txt:timecodes": {
   "files": {
@@ -469,14 +403,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 1 input lines -> foo - alpha numbered.txt\n"
  },
- "foo.:tc+num": {
-  "files": {
-   "foo - timecodes numbered.txt": "00001 gamma\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 1 input lines -> foo - timecodes numbered.txt\n"
- },
  "foo.:timecodes": {
   "files": {
    "foo - timecodes.txt": "gamma\n"
@@ -489,13 +415,19 @@
   "files": {},
   "rc": 0,
   "stderr": "",
-  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
+  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default, numbered-only and timecode modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged; repeated text collapses\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...); not with --keep-timecodes\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
  },
  "help-prefix": {
   "files": {},
   "rc": 0,
   "stderr": "",
-  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default and numbered-only modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...)\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
+  "stdout": "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]\n\nStrip lines without letters; collapse consecutive repeats in the default, numbered-only and timecode modes; keep blank separators; optional SRT timecodes.\n\npositional arguments:\n  input              input file (read only); give several or drop them onto the exe\n\noptions:\n  -h, --help         show this help message and exit\n  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged; repeated text collapses\n  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...); not with --keep-timecodes\n  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept\n  --out OUT          output file (default: name derived from input); single input only\n\nWith no mode flag, srtstripper.json next to the exe selects the mode; without\nthat file the default text mode runs. Flags given on the command line win.\n\n"
+ },
+ "keep+num": {
+  "files": {},
+  "rc": 2,
+  "stderr": "srtstripper: error: --keep-timecodes writes timecodes and no line numbers; drop --numbered\n",
+  "stdout": ""
  },
  "keep+numonly": {
   "files": {},
@@ -526,14 +458,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 7 lines from 8 input lines -> letters - alpha numbered.txt\n"
- },
- "letters.txt:tc+num": {
-  "files": {
-   "letters - timecodes numbered.txt": "00001 \u00b2 \u2163 \u4e2d\u6587 \u00e9 line mix \u00bd\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 8 input lines -> letters - timecodes numbered.txt\n"
  },
  "letters.txt:timecodes": {
   "files": {
@@ -566,14 +490,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 3 lines from 8 input lines -> lf - alpha numbered.txt\n"
- },
- "lf.srt:tc+num": {
-  "files": {
-   "lf - timecodes numbered.txt": "00001 [00:00:01] Hello world.\n\n00002 [00:00:04] Second line\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 2 lines from 8 input lines -> lf - timecodes numbered.txt\n"
  },
  "lf.srt:timecodes": {
   "files": {
@@ -612,14 +528,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 5 lines from 5 input lines -> mixed-eol - alpha numbered.txt\n"
- },
- "mixed-eol.srt:tc+num": {
-  "files": {
-   "mixed-eol - timecodes numbered.txt": "00001 alpha beta gamma\r\n\r\n00002 delta\r\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 2 lines from 5 input lines -> mixed-eol - timecodes numbered.txt\n"
  },
  "mixed-eol.srt:timecodes": {
   "files": {
@@ -690,14 +598,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 0 lines from 1 input lines -> newline-only - alpha numbered.txt\n"
  },
- "newline-only.txt:tc+num": {
-  "files": {
-   "newline-only - timecodes numbered.txt": ""
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 0 lines from 1 input lines -> newline-only - timecodes numbered.txt\n"
- },
  "newline-only.txt:timecodes": {
   "files": {
    "newline-only - timecodes.txt": ""
@@ -736,14 +636,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 0 lines from 3 input lines -> no-letters - alpha numbered.txt\n"
  },
- "no-letters.txt:tc+num": {
-  "files": {
-   "no-letters - timecodes numbered.txt": ""
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 0 lines from 3 input lines -> no-letters - timecodes numbered.txt\n"
- },
  "no-letters.txt:timecodes": {
   "files": {
    "no-letters - timecodes.txt": ""
@@ -775,14 +667,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 1 input lines -> nodot - alpha numbered.txt\n"
- },
- "nodot:tc+num": {
-  "files": {
-   "nodot - timecodes numbered.txt": "00001 delta\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 1 input lines -> nodot - timecodes numbered.txt\n"
  },
  "nodot:timecodes": {
   "files": {
@@ -858,14 +742,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 3 input lines -> sub/inner - alpha numbered.txt\n"
  },
- "sub/inner.srt:tc+num": {
-  "files": {
-   "sub/inner - timecodes numbered.txt": "00001 [00:00:01] inner text\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 3 input lines -> sub/inner - timecodes numbered.txt\n"
- },
  "sub/inner.srt:timecodes": {
   "files": {
    "sub/inner - timecodes.txt": "[00:00:01] inner text\n"
@@ -914,14 +790,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 11 lines from 12 input lines -> timecode-madness - alpha numbered.txt\n"
  },
- "timecode-madness.srt:tc+num": {
-  "files": {
-   "timecode-madness - timecodes numbered.txt": "00001 [00:00:00] first text\n\n00002 [12:34:56] second text strange: 0:0:00,000 --> nope\n\n00003 outside text\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 3 lines from 12 input lines -> timecode-madness - timecodes numbered.txt\n"
- },
  "timecode-madness.srt:timecodes": {
   "files": {
    "timecode-madness - timecodes.txt": "[00:00:00] first text\n\n[12:34:56] second text strange: 0:0:00,000 --> nope\n\noutside text\n"
@@ -954,14 +822,6 @@
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 1 lines from 1 input lines -> t\u00ebst - alpha numbered.txt\n"
  },
- "t\u00ebst.txt:tc+num": {
-  "files": {
-   "t\u00ebst - timecodes numbered.txt": "00001 epsilon \u03b6\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 1 input lines -> t\u00ebst - timecodes numbered.txt\n"
- },
  "t\u00ebst.txt:timecodes": {
   "files": {
    "t\u00ebst - timecodes.txt": "epsilon \u03b6\n"
@@ -993,14 +853,6 @@
   "rc": 0,
   "stderr": "",
   "stdout": "PASS: mode=default+numbered, wrote 4 lines from 4 input lines -> undefined - alpha numbered.txt\n"
- },
- "undefined.srt:tc+num": {
-  "files": {
-   "undefined - timecodes numbered.txt": "00001 ok line bad:\ufffd byte \ufffd tail plain\n"
-  },
-  "rc": 0,
-  "stderr": "",
-  "stdout": "PASS: mode=keep-timecodes+numbered, wrote 1 lines from 4 input lines -> undefined - timecodes numbered.txt\n"
  },
  "undefined.srt:timecodes": {
   "files": {
