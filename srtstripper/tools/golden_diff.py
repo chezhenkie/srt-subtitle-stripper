@@ -107,8 +107,7 @@ FIXTURES = {
 MODES = {
     "default": [],
     "numbered": ["--numbered"],
-    "timecodes": ["--keep-timecodes"],
-    "num-only": ["--numbered-only"],
+    "timecode": ["--timecode"],
 }
 
 EXTRA_CASES = [
@@ -118,7 +117,7 @@ EXTRA_CASES = [
     ("out-empty", ["--out=", "basic.srt"]),
     ("out-dir", ["--out", "sub", "basic.srt"]),
     ("subdir-input", ["sub/inner.srt"]),
-    ("subdir-input-tc", ["--keep-timecodes", "sub/inner.srt"]),
+    ("subdir-input-tc", ["--timecode", "sub/inner.srt"]),
     ("dir-as-input", ["sub"]),
     ("dash-input", ["-"]),
     ("ddash-positional", ["--", "--numbered"]),
@@ -127,14 +126,11 @@ EXTRA_CASES = [
     ("unknown-short", ["-x", "basic.srt"]),
     ("unknown-long", ["--bogus", "basic.srt"]),
     ("unknown-only", ["--bogus"]),
-    ("ambiguous", ["--num", "basic.srt"]),
     ("out-missing-val", ["--out"]),
     ("out-opt-like-val", ["--out", "--numbered"]),
     ("extra-positional", ["basic.srt", "extra.txt"]),
-    ("mutex", ["--numbered", "--numbered-only", "basic.srt"]),
-    ("keep+numonly", ["--numbered-only", "--keep-timecodes", "basic.srt"]),
-    ("keep+num", ["--keep-timecodes", "--numbered", "basic.srt"]),
-    ("flag-with-value", ["--numbered=x", "basic.srt"]),
+    ("mutex", ["--numbered", "--timecode", "basic.srt"]),
+    ("flag-with-value", ["--timecode=x", "basic.srt"]),
     ("help", ["-h"]),
     ("help-prefix", ["--hel"]),
     ("no-args", []),
@@ -144,8 +140,7 @@ EXTRA_CASES = [
     ("multi-input-duplicate", ["basic.srt", "basic.srt"]),
     ("multi-out-error", ["--out", "x.txt", "basic.srt", "lf.srt"]),
     # srtstripper.json next to the exe
-    ("config-timecodes", ["basic.srt"], '{"mode": "timecodes"}'),
-    ("config-numbered-only", ["basic.srt"], '{"mode": "numbered-only"}'),
+    ("config-timecode", ["basic.srt"], '{"mode": "timecode"}'),
     ("config-numbered", ["basic.srt"], '{"mode": "numbered"}'),
     ("config-text-explicit", ["basic.srt"], '{"mode": "text"}'),
     ("config-empty", ["basic.srt"], "{}"),
@@ -153,9 +148,8 @@ EXTRA_CASES = [
     ("config-bad-mode", ["basic.srt"], '{"mode": "bogus"}'),
     ("config-bad-json", ["basic.srt"], '{"mode": '),
     ("config-mode-not-string", ["basic.srt"], '{"mode": 5}'),
-    ("config-cli-override", ["--numbered", "basic.srt"], '{"mode": "timecodes"}'),
-    ("config-cli-override-mutex", ["--keep-timecodes", "basic.srt"], '{"mode": "numbered-only"}'),
-    ("config-cli-numbered-clears", ["--numbered", "basic.srt"], '{"mode": "numbered-only"}'),
+    ("config-cli-override", ["--numbered", "basic.srt"], '{"mode": "timecode"}'),
+    ("config-cli-override-mutex", ["--timecode", "basic.srt"], '{"mode": "numbered"}'),
 ]
 
 # Failure messages of these cases carry OS-specific filesystem error text

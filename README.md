@@ -4,12 +4,11 @@ Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary
 
 ## Repeat collapsing
 
-Rolling-caption subtitles repeat each line in overlapping cues before advancing, so the same text appears two or three times in a row. The default mode, `--numbered-only` and `--keep-timecodes` keep only the first occurrence of a run of identical text lines. A non-consecutive repeat is kept, so dialogue that genuinely repeats later survives.
+Rolling-caption subtitles repeat each line in overlapping cues before advancing, so the same text appears two or three times in a row. All modes keep only the first occurrence of a run of identical text lines. A non-consecutive repeat is kept, so dialogue that genuinely repeats later survives.
 
 - The comparison is exact text equality after decoding; the reference is the last kept line.
 - Blank separators between repeats do not break the run: the run collapses and leaves one blank line.
-- In `--keep-timecodes` the comparison is on the merged paragraph text only; the cue stamp is not part of it, and the kept paragraph keeps its own stamp.
-- `--numbered` keeps every line, since the counter already distinguishes lines.
+- In `--timecode` the comparison is on the merged paragraph text only; the cue stamp is not part of it, and the kept paragraph keeps its own stamp.
 
 Input:
 
@@ -24,22 +23,21 @@ Default output:
 
 ## Usage
 
-    srtstripper "file.srt" ["file2.srt" ...] [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]
+    srtstripper "file.srt" ["file2.srt" ...] [--timecode] [--numbered] [--out "result.txt"]
 
 Several input files may be given; each is processed in order with the same flags and gets its own PASS line. `--out` is only valid with a single input.
 
 - default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
-- `--keep-timecodes`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`; consecutive paragraphs with equal text collapse to the first occurrence, which keeps its own stamp. Cannot be combined with `--numbered`.
-- `--numbered`: prefix every kept text line with a 5-digit counter (`00001`, `00002`, ...); blank separator lines stay unnumbered.
-- `--numbered-only`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines collapse to the first occurrence. Cannot be combined with `--keep-timecodes`.
+- `--timecode`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`; consecutive paragraphs with equal text collapse to the first occurrence, which keeps its own stamp. Cannot be combined with `--numbered`.
+- `--numbered`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines collapse to the first occurrence. Cannot be combined with `--timecode`.
 
-Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`; `--numbered` stacked on another mode appends `" numbered"` to the suffix. Existing `--out` parent directories are created.
+Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`. Existing `--out` parent directories are created.
 
 Exit codes: 0 success, 2 usage error, input not found or a bad config file, 1 I/O error.
 
 Blank-line guarantee (all modes): exactly one blank line between paragraphs; runs of blank lines collapse to one; trailing blank lines are trimmed.
 
-Repeat collapsing applies to the default, `--numbered-only` and `--keep-timecodes` modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. In `--keep-timecodes` the comparison is on the merged paragraph text only, never on the stamp; the kept paragraph keeps its own stamp. `--numbered` keeps every line.
+Repeat collapsing applies to all modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. In `--timecode` the comparison is on the merged paragraph text only, never on the stamp; the kept paragraph keeps its own stamp.
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with permissive replacement decoding for invalid bytes. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
 
@@ -51,12 +49,12 @@ Drop one or more SRT/text files onto the exe: each dropped file arrives as a bar
 
 An optional `srtstripper.json` file next to the exe sets the mode when no mode flag is passed, which is what a dropper run uses. The default with no file is the text mode.
 
-    {"mode": "timecodes"}
+    {"mode": "timecode"}
 
-- `mode`: `text` (default), `timecodes`, `numbered`, `numbered-only`.
+- `mode`: `text` (default), `timecode`, `numbered`.
 - Unknown keys are ignored, so a config written for a newer version still loads in an older exe.
 - A missing file means text mode; a malformed file, a non-string `mode` or an unknown mode value is an error (exit code 2).
-- Flags on the command line win over the config: `--numbered` clears a config `numbered-only` and vice versa.
+- Flags on the command line win over the config.
 
 ## Windows behavior
 
@@ -141,7 +139,7 @@ ARM64:
 
 ## CI and releases
 
-GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 118-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
+GitHub Actions runs fmt, clippy (`-D warnings`), build, unit tests, the 94-case golden regression suite and an end-to-end smoke on Linux (x86_64 and ARM64), Windows (x86_64 and ARM64), macOS and statically linked musl builds for Alpine and other non-glibc systems, and uploads the binaries as artifacts. Pushing a tag `v*` publishes a GitHub release with the binaries and `SHA256SUMS` attached.
 
 ## Development
 

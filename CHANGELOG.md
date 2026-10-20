@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.0]
+
+### Changed
+
+- `--numbered-only` renamed to `--numbered`; `--keep-timecodes` renamed to `--timecode`. All modes collapse consecutive repeated text.
+
+### Removed
+
+- The old `--numbered` flag (5-digit counter prefix per kept text line) is removed. The `--numbered` name now refers to the SRT-look mode (number line per text block), formerly `--numbered-only`.
+
 ## [1.5.0]
 
 ### Added

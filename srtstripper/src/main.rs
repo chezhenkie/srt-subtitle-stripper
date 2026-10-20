@@ -437,7 +437,7 @@ fn find_timecode(line: &str) -> Option<Tc<'_>> {
 
 struct Out<'e> {
     buf: String,
-    /// Join separator between items: eol normally, eol+eol in keep-timecodes
+    /// Join separator between items: eol normally, eol+eol in timecode mode
     /// mode (blank line between paragraphs).
     sep: &'e str,
     items: usize,
@@ -498,7 +498,7 @@ fn write_parts(buf: &mut String, parts: &[&str]) {
 }
 
 /// Consecutive-repeat suppression for the text modes (plain default,
-/// --numbered-only) and the timecode mode. A text identical to the previous
+/// --numbered) and the timecode mode. A text identical to the previous
 /// kept text is dropped; blank separator state is left untouched, so repeats
 /// stay recognized across blank runs and the separators shrink to one. In
 /// the timecode mode the compared text is the merged paragraph text; the
@@ -698,22 +698,21 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
 // ---------------------------------------------------------------------------
 
 const USAGE: &str =
-    "usage: srtstripper [-h] [--keep-timecodes] [--numbered | --numbered-only] [--out OUT] input [input ...]";
+    "usage: srtstripper [-h] [--timecode] [--numbered] [--out OUT] input [input ...]";
 
 fn help_text() -> String {
     format!(
         "{USAGE}
 
-Strip lines without letters; collapse consecutive repeats in the default, numbered-only and timecode modes; keep blank separators; optional SRT timecodes.
+Strip lines without letters; collapse consecutive repeats in all modes; keep blank separators; optional SRT timecodes.
 
 positional arguments:
   input              input file (read only); give several or drop them onto the exe
 
 options:
   -h, --help         show this help message and exit
-  --keep-timecodes   SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged; repeated text collapses
-  --numbered         prefix each kept text line with a 5-digit counter (00001, 00002, ...); not with --keep-timecodes
-  --numbered-only    number on its own line per text block (SRT look, no timecodes), blank lines kept
+  --timecode         SRT mode: one '[HH:MM:SS] text' paragraph per cue, cue text merged; repeated text collapses
+  --numbered         number on its own line per text block (SRT look, no timecodes), blank lines kept
   --out OUT          output file (default: name derived from input); single input only
 
 With no mode flag, srtstripper.json next to the exe selects the mode; without
@@ -729,7 +728,6 @@ struct Args {
     out: Option<PathBuf>,
     keep_timecodes: bool,
     numbered: bool,
-    numbered_only: bool,
 }
 
 enum Parsed {
@@ -743,15 +741,13 @@ enum LongOpt {
     Help,
     KeepTc,
     Num,
-    NumOnly,
     Out,
 }
 
 const LONGS: &[(&str, LongOpt)] = &[
     ("--help", LongOpt::Help),
-    ("--keep-timecodes", LongOpt::KeepTc),
+    ("--timecode", LongOpt::KeepTc),
     ("--numbered", LongOpt::Num),
-    ("--numbered-only", LongOpt::NumOnly),
     ("--out", LongOpt::Out),
 ];
 
@@ -794,7 +790,6 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
     let mut out: Option<PathBuf> = None;
     let mut keep = false;
     let mut num = false;
-    let mut num_only = false;
     let mut extras: Vec<String> = Vec::new();
     let mut after_dd = false; // tokens after "--" are positional
 
@@ -829,7 +824,7 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
             };
             match opt {
                 LongOpt::Help => return Parsed::Help,
-                LongOpt::KeepTc | LongOpt::Num | LongOpt::NumOnly => {
+                LongOpt::KeepTc | LongOpt::Num => {
                     if let Some(v) = inline_val {
                         return Parsed::Error(format!(
                             "argument {full}: ignored explicit argument '{v}'"
@@ -837,14 +832,7 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
                     }
                     match opt {
                         LongOpt::KeepTc => keep = true,
-                        LongOpt::Num => num = true,
-                        _ => num_only = true,
-                    }
-                    if num && num_only {
-                        return Parsed::Error(
-                            "argument --numbered-only: not allowed with argument --numbered"
-                                .to_string(),
-                        );
+                        _ => num = true,
                     }
                 }
                 LongOpt::Out => {
@@ -900,7 +888,6 @@ fn parse_args(args: impl Iterator<Item = OsString>) -> Parsed {
         out,
         keep_timecodes: keep,
         numbered: num,
-        numbered_only: num_only,
     }))
 }
 
@@ -914,7 +901,6 @@ const CONFIG_FILE: &str = "srtstripper.json";
 struct Config {
     keep_timecodes: bool,
     numbered: bool,
-    numbered_only: bool,
 }
 
 /// Minimal JSON reader for the flat config object: objects, arrays,
@@ -1197,15 +1183,11 @@ fn config_from_entries(entries: &[(String, Jv)]) -> Result<Config, String> {
             };
             match mode.as_str() {
                 "text" => {}
-                "timecodes" => cfg.keep_timecodes = true,
+                "timecode" => cfg.keep_timecodes = true,
                 "numbered" => cfg.numbered = true,
-                "numbered-only" => cfg.numbered_only = true,
                 other => return Err(format!("unknown mode \"{other}\"")),
             }
         }
-    }
-    if cfg.numbered && cfg.numbered_only {
-        return Err("config sets both numbered and numbered-only modes".to_string());
     }
     Ok(cfg)
 }
@@ -1237,11 +1219,6 @@ fn merge_flags(cfg: &mut Config, args: &Args) {
     }
     if args.numbered {
         cfg.numbered = true;
-        cfg.numbered_only = false;
-    }
-    if args.numbered_only {
-        cfg.numbered_only = true;
-        cfg.numbered = false;
     }
 }
 
@@ -1285,13 +1262,7 @@ fn file_stem(name: &str) -> &str {
     name
 }
 
-fn run_one(
-    input: &Path,
-    out: &Option<PathBuf>,
-    keep: bool,
-    numbered: bool,
-    numbered_only: bool,
-) -> u8 {
+fn run_one(input: &Path, out: &Option<PathBuf>, keep: bool, numbered: bool) -> u8 {
     if !input.is_file() {
         print_err(&format!("FAIL: input not found: {}", input.display()));
         return 2;
@@ -1314,23 +1285,13 @@ fn run_one(
         // Separator: blank line between items in timecode mode, eol otherwise.
         let sep = if eol == "\r\n" { "\r\n\r\n" } else { "\n\n" };
         let (b, n) = build_timecodes(&lines, sep, cap);
-        (b, n, "keep-timecodes", " - timecodes".to_string())
-    } else if numbered_only {
+        (b, n, "timecode", " - timecodes".to_string())
+    } else if numbered {
         let (b, n) = build_numbered_only(&lines, eol, cap);
-        (b, n, "numbered-only", " - numbered".to_string())
+        (b, n, "numbered", " - numbered".to_string())
     } else {
-        let (b, n) = build_default(&lines, eol, cap, numbered, !numbered);
-        let mode = if numbered {
-            "default+numbered"
-        } else {
-            "default"
-        };
-        let suffix = if numbered {
-            " - alpha numbered"
-        } else {
-            " - alpha"
-        };
-        (b, n, mode, suffix.to_string())
+        let (b, n) = build_default(&lines, eol, cap, false, true);
+        (b, n, "default", " - alpha".to_string())
     };
 
     let out_path: PathBuf = match out {
@@ -1413,17 +1374,10 @@ fn main() -> ExitCode {
             };
             merge_flags(&mut cfg, &args);
 
-            if cfg.numbered_only && cfg.keep_timecodes {
-                print_err(concat!(
-                    "srtstripper: error: --numbered-only writes number lines and no ",
-                    "timecodes; drop --keep-timecodes"
-                ));
-                return ExitCode::from(2);
-            }
             if cfg.numbered && cfg.keep_timecodes {
                 print_err(concat!(
-                    "srtstripper: error: --keep-timecodes writes timecodes and no ",
-                    "line numbers; drop --numbered"
+                    "srtstripper: error: --numbered writes number lines and no ",
+                    "timecodes; drop --timecode"
                 ));
                 return ExitCode::from(2);
             }
@@ -1434,13 +1388,7 @@ fn main() -> ExitCode {
 
             let mut rc = 0u8;
             for input in &args.inputs {
-                let code = run_one(
-                    input,
-                    &args.out,
-                    cfg.keep_timecodes,
-                    cfg.numbered,
-                    cfg.numbered_only,
-                );
+                let code = run_one(input, &args.out, cfg.keep_timecodes, cfg.numbered);
                 if code > rc {
                     rc = code;
                 }
@@ -1641,7 +1589,7 @@ mod tests {
 
     #[test]
     fn multiple_inputs_with_flags() {
-        match parse(&["--keep-timecodes", "a.srt", "b.srt"]) {
+        match parse(&["--timecode", "a.srt", "b.srt"]) {
             Parsed::Args(args) => {
                 assert_eq!(args.inputs.len(), 2);
                 assert!(args.keep_timecodes);
@@ -1699,18 +1647,17 @@ mod tests {
     #[test]
     fn config_modes() {
         let cases = [
-            (r#"{}"#, false, false, false),
-            (r#"{"mode": "text"}"#, false, false, false),
-            (r#"{"mode": "timecodes"}"#, true, false, false),
-            (r#"{"mode": "numbered"}"#, false, true, false),
-            (r#"{"mode": "numbered-only"}"#, false, false, true),
+            (r#"{}"#, false, false),
+            (r#"{"mode": "text"}"#, false, false),
+            (r#"{"mode": "timecode"}"#, true, false),
+            (r#"{"mode": "numbered"}"#, false, true),
         ];
-        for (json, keep, num, num_only) in cases {
+        for (json, keep, num) in cases {
             let entries = parse_config_json(json).expect("valid json");
             let cfg = config_from_entries(&entries).expect("valid config");
             assert_eq!(
-                (cfg.keep_timecodes, cfg.numbered, cfg.numbered_only),
-                (keep, num, num_only),
+                (cfg.keep_timecodes, cfg.numbered),
+                (keep, num),
                 "json {json}"
             );
         }
@@ -1724,42 +1671,33 @@ mod tests {
         assert!(config_from_entries(&entries).is_err());
         let entries = parse_config_json(r#"{"mode": 5}"#).expect("valid json");
         assert!(config_from_entries(&entries).is_err());
-        let entries = parse_config_json(r#"{"mode": "numbered", "mode2": "numbered-only"}"#)
-            .expect("valid json");
+        let entries =
+            parse_config_json(r#"{"mode": "numbered", "mode2": "other"}"#).expect("valid json");
         assert!(config_from_entries(&entries).is_ok());
     }
 
     #[test]
-    fn config_rejects_both_numbered_modes() {
-        // duplicate "mode" keys can express both; rejected as a config error
-        let entries = parse_config_json(r#"{"mode": "numbered", "mode": "numbered-only"}"#)
-            .expect("valid json");
-        assert!(config_from_entries(&entries).is_err());
-    }
-
-    #[test]
     fn merge_flags_cli_wins() {
+        // CLI flags set the corresponding config values
         let mut cfg = Config {
-            keep_timecodes: true,
+            keep_timecodes: false,
             numbered: false,
-            numbered_only: false,
         };
         merge_flags(
             &mut cfg,
             &Args {
                 inputs: vec![],
                 out: None,
-                keep_timecodes: false,
+                keep_timecodes: true,
                 numbered: true,
-                numbered_only: false,
             },
         );
-        assert!(cfg.keep_timecodes && cfg.numbered && !cfg.numbered_only);
+        assert!(cfg.keep_timecodes && cfg.numbered);
 
+        // Config values persist when no CLI flag is given
         let mut cfg = Config {
-            keep_timecodes: false,
-            numbered: false,
-            numbered_only: true,
+            keep_timecodes: true,
+            numbered: true,
         };
         merge_flags(
             &mut cfg,
@@ -1768,27 +1706,8 @@ mod tests {
                 out: None,
                 keep_timecodes: false,
                 numbered: false,
-                numbered_only: false,
             },
         );
-        assert!(cfg.numbered_only && !cfg.numbered);
-
-        // CLI --numbered clears a config numbered-only
-        let mut cfg = Config {
-            keep_timecodes: false,
-            numbered: false,
-            numbered_only: true,
-        };
-        merge_flags(
-            &mut cfg,
-            &Args {
-                inputs: vec![],
-                out: None,
-                keep_timecodes: false,
-                numbered: true,
-                numbered_only: false,
-            },
-        );
-        assert!(cfg.numbered && !cfg.numbered_only);
+        assert!(cfg.keep_timecodes && cfg.numbered);
     }
 }

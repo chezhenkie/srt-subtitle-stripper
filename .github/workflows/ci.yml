@@ -88,7 +88,7 @@ jobs:
           test -s "sample - alpha.txt"
           grep -Fq "Hello smoke test." "sample - alpha.txt"
           if grep -q "1234" "sample - alpha.txt"; then exit 1; fi
-          "$BIN" --keep-timecodes sample.srt
+          "$BIN" --timecode sample.srt
           grep -Fq "[00:00:01] Hello smoke test." "sample - timecodes.txt"
           printf '1\n00:00:02,000 --> 00:00:03,000\nSecond smoke.\n' > sample2.srt
           "$BIN" sample.srt sample2.srt
@@ -187,9 +187,9 @@ jobs:
             - srtstripper-windows-x86_64-setup.exe
             - srtstripper-windows-aarch64-setup.exe
 
-            Usage: `srtstripper "file.srt" ["file2.srt" ...] [--keep-timecodes] [--numbered | --numbered-only] [--out "result.txt"]`
+            Usage: `srtstripper "file.srt" ["file2.srt" ...] [--timecode] [--numbered] [--out "result.txt"]`
 
-            Drop several SRT/text files onto the exe to convert them in one run; each input prints its own PASS line. An optional `srtstripper.json` next to the exe sets the mode for runs without flags, for example `{"mode": "timecodes"}`; command line flags win.
+            Drop several SRT/text files onto the exe to convert them in one run; each input prints its own PASS line. An optional `srtstripper.json` next to the exe sets the mode for runs without flags, for example `{"mode": "timecode"}`; command line flags win.
 
             Install with curl (Linux x86_64):
 
