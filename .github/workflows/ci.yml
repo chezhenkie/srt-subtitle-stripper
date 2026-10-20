@@ -227,6 +227,6 @@ jobs:
 
                 curl.exe -L -o srtstripper.exe https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64.exe
 
-            The Windows setup executables install to `%LOCALAPPDATA%\Programs\srtstripper` and register an uninstaller in Settings > Apps; silent install with `/VERYSILENT`, add `/TASKS=` to skip the PATH entry.
+            The Windows setup executables install per-user (default `%LOCALAPPDATA%\Programs\srtstripper`, the folder can be changed in the wizard), register an uninstaller in Settings > Apps, and have no license page; silent install with `/VERYSILENT`, add `/TASKS=` to skip the PATH entry.
 
             Full usage, requirements and known presentation deviations are in the README. Changelog: https://github.com/chezhenkie/srt-subtitle-stripper/blob/main/CHANGELOG.md
