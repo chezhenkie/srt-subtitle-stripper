@@ -4,11 +4,12 @@ Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary
 
 ## Repeat collapsing
 
-Rolling-caption subtitles repeat each line in overlapping cues before advancing, so the same text appears two or three times in a row. All modes keep only the first occurrence of a run of identical text lines. A non-consecutive repeat is kept, so dialogue that genuinely repeats later survives.
+Rolling-caption subtitles repeat each line in overlapping cues before advancing, so the same text appears two or three times in a row. Default and `--numbered` keep only the first occurrence of a run of identical text lines. A non-consecutive repeat is kept, so dialogue that genuinely repeats later survives.
 
 - The comparison is exact text equality after decoding; the reference is the last kept line.
 - Blank separators between repeats do not break the run: the run collapses and leaves one blank line.
-- In `--timecode` the comparison is on the merged paragraph text only; the cue stamp is not part of it, and the kept paragraph keeps its own stamp.
+- `--timecode` trims each paragraph against the text already emitted: the longest word-boundary overlap at the end of that text is removed, so a rolling cue writes only its new words with its own stamp. A paragraph fully covered by the emitted text is dropped.
+- The cue stamp is never part of the comparison.
 
 Input:
 
@@ -28,7 +29,7 @@ Default output:
 Several input files may be given; each is processed in order with the same flags and gets its own PASS line. `--out` is only valid with a single input.
 
 - default: keep every line with at least one letter, drop index and timestamp lines, keep blank lines for separation; consecutive repeated text lines collapse to the first occurrence.
-- `--timecode`: SRT-aware; one paragraph per cue, `"[HH:MM:SS] merged text"`; consecutive paragraphs with equal text collapse to the first occurrence, which keeps its own stamp. Cannot be combined with `--numbered`.
+- `--timecode`: SRT-aware; one paragraph per cue. Each paragraph is trimmed of the words already shown, so only new text is written with the cue's own stamp; a fully repeated paragraph is dropped. Cannot be combined with `--numbered`.
 - `--numbered`: SRT look without timecodes; a number line (`00001`) above each text block, blank lines kept; consecutive repeated text lines and repeated blocks collapse to the first occurrence. Cannot be combined with `--timecode`.
 
 Default outputs: `"<stem> - alpha.txt"`, `"<stem> - timecodes.txt"`, `"<stem> - numbered.txt"`. Existing `--out` parent directories are created.
@@ -37,7 +38,7 @@ Exit codes: 0 success, 2 usage error, input not found or a bad config file, 1 I/
 
 Blank-line guarantee (all modes): exactly one blank line between paragraphs; runs of blank lines collapse to one; trailing blank lines are trimmed.
 
-Repeat collapsing applies to all modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. In `--timecode` the comparison is on the merged paragraph text only, never on the stamp; the kept paragraph keeps its own stamp.
+Repeat collapsing applies to all modes: a run of identical text lines, even separated by blank lines, is reduced to its first occurrence and the separators shrink to one. In `--timecode` only words not already shown are written, so overlapping cues never repeat text and the stamp is never part of the comparison.
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with permissive replacement decoding for invalid bytes. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
 

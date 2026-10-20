@@ -273,11 +273,11 @@
  },
  "doubling.srt:timecode": {
   "files": {
-   "doubling - timecodes.txt": "first line here\n\n[00:00:03] first line here second line here\n\n[00:00:05] second line here\n\n[00:00:05] second line here third line here\n\n[00:00:07] no no no\n\n[00:00:09] later repeat\n\n[00:00:13] third line here\n"
+   "doubling - timecodes.txt": "first line here\n\n[00:00:03] second line here\n\n[00:00:05] third line here\n\n[00:00:07] no no no\n\n[00:00:09] later repeat\n\n[00:00:13] third line here\n"
   },
   "rc": 0,
   "stderr": "",
-  "stdout": "PASS: mode=timecode, wrote 7 lines from 42 input lines -> doubling - timecodes.txt\n"
+  "stdout": "PASS: mode=timecode, wrote 6 lines from 42 input lines -> doubling - timecodes.txt\n"
  },
  "empty.txt:default": {
   "files": {

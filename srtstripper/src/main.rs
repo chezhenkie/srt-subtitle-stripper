@@ -476,16 +476,6 @@ impl<'e> Out<'e> {
         let _ = write!(self.buf, "{:05}", n);
         self.items += 1;
     }
-    /// Emit a paragraph whose text was already built (dedup compares the
-    /// text, then the paragraph is emitted with its own stamp).
-    fn para_text(&mut self, tc: Option<Tc<'_>>, text: &str) {
-        self.sep();
-        if let Some(t) = tc {
-            let _ = write!(self.buf, "[{:02}:{}:{}] ", t.hh, t.mm, t.ss);
-        }
-        self.buf.push_str(text);
-        self.items += 1;
-    }
 }
 
 fn write_parts(buf: &mut String, parts: &[&str]) {
@@ -681,13 +671,82 @@ fn flush_block(
     block.clear();
 }
 
-fn flush_plain(o: &mut Out, plain: &mut Vec<&str>, dedup: &mut Dedup, text: &mut String) {
+/// Minimum overlap worth trimming: shorter shared runs are common words, not
+/// a repeated caption line.
+const MIN_OVERLAP: usize = 8;
+/// Rolling tail buffer size. Two caption lines fit comfortably; older text is
+/// dropped so the overlap scan stays bounded.
+const TAIL_CAP: usize = 1024;
+
+/// Longest overlap between the text already shown and the start of `text`,
+/// at word boundaries, that is worth trimming. Zero when there is none.
+fn overlap_len(tail: &str, text: &str) -> usize {
+    // A paragraph repeated at the end of the tail disappears regardless of
+    // length: "hello" twice is still a repeat. Word boundary checked so "he"
+    // does not match the tail of "The".
+    if !text.is_empty()
+        && tail.ends_with(text)
+        && (tail.len() == text.len() || tail.as_bytes()[tail.len() - text.len() - 1] == b' ')
+    {
+        return text.len();
+    }
+    let max = tail.len().min(text.len());
+    let mut l = max;
+    while l >= MIN_OVERLAP {
+        if text.is_char_boundary(l)
+            && tail.is_char_boundary(tail.len() - l)
+            && tail.ends_with(&text[..l])
+        {
+            let after_ok = l == text.len() || text.as_bytes()[l] == b' ';
+            let before_ok = l == tail.len() || tail.as_bytes()[tail.len() - l - 1] == b' ';
+            if after_ok && before_ok {
+                return l;
+            }
+        }
+        l -= 1;
+    }
+    0
+}
+
+/// Append emitted text to the rolling tail buffer, keeping only its last
+/// TAIL_CAP bytes at a char boundary.
+fn tail_push(tail: &mut String, text: &str) {
+    if !tail.is_empty() {
+        tail.push(' ');
+    }
+    tail.push_str(text);
+    if tail.len() > TAIL_CAP {
+        let mut start = tail.len() - TAIL_CAP;
+        while !tail.is_char_boundary(start) {
+            start += 1;
+        }
+        tail.drain(..start);
+    }
+}
+
+/// Emit one paragraph, stripped of the words already shown at its start. A
+/// paragraph fully covered by previous text disappears; a rolling cue emits
+/// only its new words with its own stamp.
+fn emit_para(o: &mut Out, tail: &mut String, stamp: Option<Tc<'_>>, text: &str) {
+    let l = overlap_len(tail, text);
+    let rest = text[l..].trim_start_matches(' ');
+    if rest.is_empty() {
+        return;
+    }
+    let mut line = String::with_capacity(rest.len() + 16);
+    if let Some(t) = stamp {
+        let _ = write!(line, "[{:02}:{}:{}] ", t.hh, t.mm, t.ss);
+    }
+    line.push_str(rest);
+    o.text(&line);
+    tail_push(tail, rest);
+}
+
+fn flush_plain(o: &mut Out, plain: &mut Vec<&str>, tail: &mut String, text: &mut String) {
     if !plain.is_empty() {
         text.clear();
         write_parts(text, plain);
-        if !dedup.repeat(text) {
-            o.para_text(None, text);
-        }
+        emit_para(o, tail, None, text);
         plain.clear();
     }
 }
@@ -696,39 +755,38 @@ fn flush_cue(
     o: &mut Out,
     stamp: Option<Tc<'_>>,
     cue: &mut Vec<&str>,
-    dedup: &mut Dedup,
+    tail: &mut String,
     text: &mut String,
 ) {
     if !cue.is_empty() {
         text.clear();
         write_parts(text, cue);
-        if !dedup.repeat(text) {
-            o.para_text(stamp, text);
-        }
+        emit_para(o, tail, stamp, text);
         cue.clear();
     }
 }
 
-/// Timecode pipeline: one "[HH:MM:SS] merged text" item per cue; text outside
-/// cues becomes its own item. Repeat collapsing compares the merged text
-/// only: a paragraph whose text equals the previous kept paragraph's text is
-/// dropped, and the kept paragraph keeps its own stamp. Buffers are reused
-/// via clear().
+/// Timecode pipeline: one "[HH:MM:SS] text" item per cue; text outside cues
+/// becomes its own item. Rolling captions repeat the previous words before
+/// appending new ones, so each paragraph is trimmed against the rolling tail
+/// of already shown text: only the new words are emitted, with the cue's own
+/// stamp. A paragraph fully contained in earlier text disappears. Buffers are
+/// reused via clear().
 fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
     let mut o = Out::new(sep, cap);
     let mut stamp: Option<Tc<'_>> = None;
     let mut cue: Vec<&str> = Vec::new();
     let mut plain: Vec<&str> = Vec::new();
-    let mut dedup = Dedup::new(true);
+    let mut tail = String::new();
     let mut text = String::new();
     for &line in lines {
         if let Some(tc) = find_timecode(line) {
-            flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
-            flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
+            flush_plain(&mut o, &mut plain, &mut tail, &mut text);
+            flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
             stamp = Some(tc);
         } else if is_blank(line) {
-            flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
-            flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
+            flush_plain(&mut o, &mut plain, &mut tail, &mut text);
+            flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
             stamp = None;
         } else if has_letter(line) {
             let t = trim_blanks(line);
@@ -739,8 +797,8 @@ fn build_timecodes(lines: &[&str], sep: &str, cap: usize) -> (String, usize) {
             }
         }
     }
-    flush_plain(&mut o, &mut plain, &mut dedup, &mut text);
-    flush_cue(&mut o, stamp, &mut cue, &mut dedup, &mut text);
+    flush_plain(&mut o, &mut plain, &mut tail, &mut text);
+    flush_cue(&mut o, stamp, &mut cue, &mut tail, &mut text);
     (o.buf, o.items)
 }
 
@@ -1637,6 +1695,52 @@ mod tests {
         let (out, items) = build_timecodes(&lines, "\n\n", 256);
         assert_eq!(out, "hello\n\nworld");
         assert_eq!(items, 2);
+    }
+
+    #[test]
+    fn timecodes_collapse_rolling_word_prefix() {
+        // Rolling captions append words: a cue that only repeats the start of
+        // the next cue adds nothing, so the longer paragraph wins and keeps its
+        // own stamp. The tail fragment is absorbed by the following cue.
+        let lines = [
+            "1",
+            "00:00:01,000 --> 00:00:02,000",
+            "alpha beta",
+            "",
+            "2",
+            "00:00:03,000 --> 00:00:04,000",
+            "alpha beta gamma delta",
+            "",
+            "3",
+            "00:00:05,000 --> 00:00:06,000",
+            "gamma delta",
+            "",
+            "4",
+            "00:00:07,000 --> 00:00:08,000",
+            "gamma delta epsilon zeta",
+        ];
+        let (out, items) = build_timecodes(&lines, "\n\n", 512);
+        assert_eq!(
+            out,
+            "[00:00:01] alpha beta\n\n[00:00:03] gamma delta\n\n[00:00:07] epsilon zeta"
+        );
+        assert_eq!(items, 3);
+    }
+
+    #[test]
+    fn timecodes_keep_midword_prefixes_separate() {
+        // "The" is not a word-prefix of "There": both survive.
+        let lines = [
+            "1",
+            "00:00:01,000 --> 00:00:02,000",
+            "The",
+            "",
+            "2",
+            "00:00:03,000 --> 00:00:04,000",
+            "There is more",
+        ];
+        let (out, _) = build_timecodes(&lines, "\n\n", 256);
+        assert_eq!(out, "[00:00:01] The\n\n[00:00:03] There is more");
     }
 
     #[test]

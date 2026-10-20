@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.2]
+
+### Fixed
+
+- `--timecode` removes rolling-caption overlap instead of only dropping identical paragraphs. Each paragraph is trimmed at a word boundary against the text already emitted, so a cue writes only its new words with its own stamp. A fully repeated paragraph is dropped.
+
 ## [1.6.1]
 
 ### Fixed
