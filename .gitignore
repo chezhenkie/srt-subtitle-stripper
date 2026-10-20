@@ -4,3 +4,4 @@ dist/
 *.res
 _scratch/
 releases/
+python-to-rust-refactor-pitfalls.md
