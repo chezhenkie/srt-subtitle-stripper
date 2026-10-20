@@ -1,6 +1,6 @@
 [package]
 name = "srtstripper"
-version = "1.6.3"
+version = "1.6.4"
 edition = "2021"
 description = "Strip non-alphabetic lines from SRT/text files, with optional timecodes; collapses consecutive repeats in the text modes."
 license = "MIT"

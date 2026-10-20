@@ -115,6 +115,10 @@ jobs:
           if ($vi.FileVersion -ne "$ver.0" -or $vi.ProductVersion -ne "$ver.0") {
             throw "version metadata mismatch: file=$($vi.FileVersion) product=$($vi.ProductVersion) expected=$ver.0"
           }
+          $raw = '{0}.{1}.{2}.{3}' -f $vi.FileMajorPart, $vi.FileMinorPart, $vi.FileBuildPart, $vi.FilePrivatePart
+          if ($raw -ne "$ver.0") {
+            throw "numeric FILEVERSION mismatch: $raw, expected $ver.0"
+          }
 
       - uses: actions/upload-artifact@v7
         with:

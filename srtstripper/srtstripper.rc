@@ -2,8 +2,8 @@
 // Version numbers must match [package] version in Cargo.toml.
 
 1 VERSIONINFO
-FILEVERSION     1,4,1,0
-PRODUCTVERSION  1,4,1,0
+FILEVERSION     1,6,4,0
+PRODUCTVERSION  1,6,4,0
 FILEOS          0x40004L
 FILETYPE        0x1L
 BEGIN
@@ -13,12 +13,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName",      "westercoder"
       VALUE "FileDescription",  "srtstripper - strip non-alphabetic lines from SRT/text files"
-      VALUE "FileVersion",      "1.6.3.0"
+      VALUE "FileVersion",      "1.6.4.0"
       VALUE "InternalName",     "srtstripper"
       VALUE "LegalCopyright",   "Copyright (c) 2026 westercoder (MIT License)"
       VALUE "OriginalFilename", "srtstripper.exe"
       VALUE "ProductName",      "srtstripper"
-      VALUE "ProductVersion",   "1.6.3.0"
+      VALUE "ProductVersion",   "1.6.4.0"
     END
   END
   BLOCK "VarFileInfo"

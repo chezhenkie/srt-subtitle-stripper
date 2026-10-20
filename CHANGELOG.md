@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.4]
+
+### Fixed
+
+- Windows file Properties: the numeric FILEVERSION/PRODUCTVERSION fields were stale at 1.4.1.0 since v1.4.1 (only the string fields were bumped on releases); now 1.6.4.0. CI and installer/build-installers.ps1 verify the numeric fields against Cargo.toml, which catches this class of drift.
+
+### Changed
+
+- Argument-level usage errors (missing input, unrecognized arguments, missing --out value, ignored flag argument, mode conflict, --out with multiple inputs) now print an examples block after the error line.
+
 ## [1.6.3]
 
 ### Changed

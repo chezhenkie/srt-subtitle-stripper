@@ -57,9 +57,14 @@ for ($i = 0; $i -lt $archList.Count; $i++) {
     $archInfo = $archList[$i]
     $input = Join-Path $DistDir $archInfo.Exe
     if (-not (Test-Path -LiteralPath $input)) { throw "missing input: $input" }
-    $inputVersion = (Get-Item -LiteralPath $input).VersionInfo.FileVersion.Trim()
+    $inputVi = (Get-Item -LiteralPath $input).VersionInfo
+    $inputVersion = $inputVi.FileVersion.Trim()
     if ($inputVersion -ne "$Version.0") {
         throw "input version mismatch: $input has $inputVersion, expected $Version.0"
+    }
+    $inputRaw = '{0}.{1}.{2}.{3}' -f $inputVi.FileMajorPart, $inputVi.FileMinorPart, $inputVi.FileBuildPart, $inputVi.FilePrivatePart
+    if ($inputRaw -ne "$Version.0") {
+        throw "input numeric FILEVERSION mismatch: $input has $inputRaw, expected $Version.0"
     }
     $output = Join-Path $OutDir "srtstripper-windows-$($archInfo.Name)-setup.exe"
     if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Force }
@@ -72,6 +77,10 @@ for ($i = 0; $i -lt $archList.Count; $i++) {
     $setupProduct = $setupVersion.ProductVersion.Trim()
     if ($setupFile -ne "$Version.0" -or $setupProduct -ne "$Version.0") {
         throw "setup version mismatch: file=$setupFile product=$setupProduct expected=$Version.0"
+    }
+    $setupRaw = '{0}.{1}.{2}.{3}' -f $setupVersion.FileMajorPart, $setupVersion.FileMinorPart, $setupVersion.FileBuildPart, $setupVersion.FilePrivatePart
+    if ($setupRaw -ne "$Version.0") {
+        throw "setup numeric FILEVERSION mismatch: $setupRaw, expected $Version.0"
     }
     Write-Output "built $output"
 }
