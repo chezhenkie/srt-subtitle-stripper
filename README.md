@@ -1,6 +1,6 @@
 # srt-subtitle-stripper
 
-### Strips non-alphabetic lines from SRT/text subtitle files. Standalone Rust binary named `srtstripper`, zero runtime dependencies.
+### Strips timecodes lines and de-duplicates lines from SRT/text subtitle files. Standalone Rust binary, zero runtime dependencies.
 
 ## Repeat collapsing
 
