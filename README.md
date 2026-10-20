@@ -40,7 +40,11 @@ Numbered Output:
 
 Timecode Output:
 
-    
+    [00:00:00]
+    The Earth is extremely old and so is the
+
+    [00:00:03]
+    life that inhabits it with the oldest    
 
 ## Usage
 
