@@ -13,9 +13,16 @@ Rolling-caption subtitles repeat each line in overlapping cues before advancing,
 
 Input:
 
-    The Earth is extremely old and so is the
-    The Earth is extremely old and so is the
-    life that inhabits it with the oldest
+2
+00:00:03,190 --> 00:00:03,200
+The Earth is extremely old and so is the
+ 
+
+3
+00:00:03,200 --> 00:00:05,110
+The Earth is extremely old and so is the
+life that inhabits it with the oldest
+
 
 Default output:
 
