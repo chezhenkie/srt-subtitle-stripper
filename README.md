@@ -29,6 +29,19 @@ Default output:
     The Earth is extremely old and so is the
     life that inhabits it with the oldest
 
+
+Numbered Output:
+
+    00001
+    The Earth is extremely old and so is the
+
+    00002
+    life that inhabits it with the oldest
+
+Timecode Output:
+
+    
+
 ## Usage
 
     srtstripper "file.srt" ["file2.srt" ...] [--timecode] [--numbered] [--out "result.txt"]
