@@ -66,6 +66,8 @@ Repeat collapsing applies to all modes: a run of identical text lines, even sepa
 
 Encoding: UTF-8 (BOM-safe), cp1252 fallback, then UTF-8 with permissive replacement decoding for invalid bytes. Output is UTF-8; CRLF vs LF is detected from the input and preserved.
 
+Memory: the whole input is decoded into one buffer and the cleaned result is built in a second buffer, so peak memory is roughly 4-5x the input size. Inputs are not streamed; multi-gigabyte files can exhaust memory.
+
 ## Drag and drop
 
 Drop one or more SRT/text files onto the exe: each dropped file arrives as a bare path argument and is processed in order, writing its cleaned copy next to the source. No console window appears, since the exe is a GUI-subsystem binary; started from a console the per-file PASS lines are printed. A dropped folder is not scanned, so point the dropper at files.
@@ -79,7 +81,7 @@ An optional `srtstripper.json` file next to the exe sets the mode when no mode f
 - `mode`: `text` (default), `timecode`, `numbered`.
 - Unknown keys are ignored, so a config written for a newer version still loads in an older exe.
 - A missing file means text mode; a malformed file, a non-string `mode` or an unknown mode value is an error (exit code 2).
-- Flags on the command line win over the config.
+- A mode flag on the command line enables that mode on top of the config; enabling both modes at once is rejected.
 
 ## Windows behavior
 
@@ -143,7 +145,7 @@ ARM64:
     curl.exe -L -O https://github.com/chezhenkie/srt-subtitle-stripper/releases/latest/download/srtstripper-windows-aarch64-setup.exe
     .\srtstripper-windows-aarch64-setup.exe
 
-The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper` by default, and the install folder can be changed in the wizard. It adds the install folder to the user PATH (the task can be cleared during setup), creates a `srtstripper` shortcut in the Start Menu so the app shows up in All apps, and registers an uninstaller in Settings > Apps. There is no license page. Taskbar pinning cannot be offered: Windows does not allow an installer to pin an app to the taskbar, that is a user action. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `unins000.exe /VERYSILENT` in the chosen install folder. The setups are not code-signed, so SmartScreen may ask for confirmation.
+The installer is per-user and needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\srtstripper` by default, and the install folder can be changed in the wizard. It adds the install folder to the user PATH (the task can be cleared during setup; the uninstaller removes the entry only if the setup added it), creates a `srtstripper` shortcut in the Start Menu so the app shows up in All apps, and registers an uninstaller in Settings > Apps. There is no license page. Taskbar pinning cannot be offered: Windows does not allow an installer to pin an app to the taskbar, that is a user action. Silent install: `srtstripper-windows-x86_64-setup.exe /VERYSILENT` (add `/TASKS=` to skip the PATH entry); silent uninstall: `unins000.exe /VERYSILENT` in the chosen install folder. The setups are not code-signed, so SmartScreen may ask for confirmation.
 
 ### Windows (PowerShell or cmd)
 

@@ -13,8 +13,8 @@ Requirements for srtstripper, a standalone Rust CLI that strips non-alphabetic l
 - FR7: Decoding order: utf-8-sig (BOM stripped), then strict cp1252 (failing on undefined bytes 0x81 0x8D 0x8F 0x90 0x9D), then utf-8 with permissive replacement decoding (invalid sequences are dropped per a fixed grouping rule). Output is UTF-8; CRLF is used if the input contains CRLF, LF otherwise.
 - FR8: Line splitting follows Unicode `splitlines` semantics (the full break set including U+0085, U+2028 and U+2029); line filtering uses the `[^\W\d_]` letter test, Unicode whitespace for blank detection and standard strip trimming.
 - FR9: CLI behavior: the mode flags and `--out`, prefix matching of long options with ambiguity errors, usage and exit behavior (0 success, 2 usage error or input not found, 1 I/O error) and a `PASS: mode=..., wrote N lines from M input lines -> path` summary on stdout. Argument-level usage errors print the usage line, a `srtstripper: error: <msg>` line and an examples block showing one valid invocation per mode.
-- FR12: Several input files may be given (Windows drag-and-drop onto the exe passes each dropped file as a bare path). Every input is processed independently with the same flags; each input prints its own PASS or FAIL line; the process exit code is the worst of the run (2 beats 1). `--out` is rejected when more than one input is given.
-- FR13: An optional `srtstripper.json` file in the exe's directory selects the mode when no mode flag is given on the command line. It is a flat JSON object; the only defined key is `mode` with the values `text` (default), `timecode` and `numbered`. Unknown keys are ignored so later versions can add keys. A missing file means the default text mode. A malformed file, a non-string `mode` value or an unknown mode value is an error: a `FAIL:` line on stderr and exit code 2. Command line flags override the config values.
+- FR12: Several input files may be given (Windows drag-and-drop onto the exe passes each dropped file as a bare path). Every input is processed independently with the same flags; each input prints its own PASS or FAIL line; the process exit code is the worst of the run (2 beats 1). `--out` is rejected when more than one input is given. The same input may be listed more than once; it is processed again, no duplicate rejection.
+- FR13: An optional `srtstripper.json` file in the exe's directory selects the mode when no mode flag is given on the command line. It is a flat JSON object; the only defined key is `mode` with the values `text` (default), `timecode` and `numbered`. Unknown keys are ignored so later versions can add keys. A missing file means the default text mode. A malformed file, a non-string `mode` value or an unknown mode value is an error: a `FAIL:` line on stderr and exit code 2. Nesting deeper than 32 JSON levels is rejected the same way. A mode flag on the command line enables that mode on top of the config; enabling both modes at once is rejected.
 - FR10: Timecode fields accept Unicode decimal digits; the emitted `[HH:MM:SS]` stamp formats only the hour field as two ASCII digits while the minute and second fields keep their original digits.
 - FR11: Combining `--timecode` with `--numbered` is rejected with a usage error.
 
@@ -26,6 +26,11 @@ Requirements for srtstripper, a standalone Rust CLI that strips non-alphabetic l
 - DR4: The Windows exe carries filled-in Properties/Details metadata: company, description, version, product, copyright and original filename.
 - DR5: Public repository under the MIT license.
 - DR6: Automated tests cover behavior: unit fixtures, a regression suite over the fixture set comparing exit codes, output text and produced files against checked-in expected results, and Windows acceptance checks for the GUI subsystem and no-console operation.
+
+## Limits
+
+- L1: The whole input is decoded into memory and the output is built in one buffer before it is written; peak memory is roughly 4-5x the input size. Inputs are not streamed and multi-gigabyte files can exhaust memory.
+- L2: The timecode overlap scan compares at most the last 1024 bytes of emitted text per paragraph, so its cost is bounded and does not grow with the file.
 
 ## References
 
