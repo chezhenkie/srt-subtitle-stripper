@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -60,7 +60,7 @@ jobs:
         run: cargo fmt --check
 
       - name: clippy
-        run: cargo clippy --release --locked --target ${{ matrix.target }} -- -D warnings
+        run: cargo clippy --release --locked --all-targets --target ${{ matrix.target }} -- -D warnings
 
       - name: build
         run: cargo build --release --locked --target ${{ matrix.target }}
@@ -162,6 +162,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, windows-installers]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -194,7 +196,7 @@ jobs:
 
             Usage: `srtstripper "file.srt" ["file2.srt" ...] [--timecode] [--numbered] [--out "result.txt"]`
 
-            Drop several SRT/text files onto the exe to convert them in one run; each input prints its own PASS line. An optional `srtstripper.json` next to the exe sets the mode for runs without flags, for example `{"mode": "timecode"}`; command line flags win.
+            Drop several SRT/text files onto the exe to convert them in one run; each input prints its own PASS line. An optional `srtstripper.json` next to the exe sets the mode for runs without flags, for example `{"mode": "timecode"}`; a command line flag enables its mode on top of the config, and conflicting modes are rejected.
 
             Install with curl (Linux x86_64):
 

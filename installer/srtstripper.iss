@@ -75,6 +75,7 @@ Name: "addpath"; Description: "Add srtstripper to the user PATH"; GroupDescripti
 [Code]
 const
   EnvKey = 'Environment';
+  MarkerKey = 'Software\srtstripper';
   WM_SETTINGCHANGE = $001A;
   SMTO_ABORTIFHUNG = $0002;
   BroadcastHwnd = $FFFF;
@@ -102,10 +103,19 @@ begin
   Result := Uppercase(Result);
 end;
 
-function RawUserPath: String;
+function TryReadUserPath(var Value: String; var HasValue: Boolean): Boolean;
 begin
-  if not RegQueryStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Result) then
-    Result := '';
+  Value := '';
+  HasValue := RegQueryStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Value);
+  { A missing value is fine; an unreadable one means the PATH is left alone. }
+  Result := HasValue or (not RegValueExists(HKEY_CURRENT_USER, EnvKey, 'Path'));
+end;
+
+{ Set only when this setup added the install dir to PATH, so an uninstall that
+  never added it (for example with /TASKS=) cannot remove it. }
+function PathMarkerExists: Boolean;
+begin
+  Result := RegValueExists(HKEY_CURRENT_USER, MarkerKey, 'PathAdded');
 end;
 
 function ListHasEntry(const List, Entry: String): Boolean;
@@ -174,20 +184,26 @@ end;
 procedure AddToUserPath;
 var
   Entry, Current: String;
+  HasValue: Boolean;
 begin
   Entry := ExpandConstant('{app}');
-  Current := RawUserPath;
-  if ListHasEntry(Current, Entry) then
+  if not TryReadUserPath(Current, HasValue) then
+  begin
+    Log('Cannot read the user PATH; leaving it unchanged');
+    Exit;
+  end;
+  if HasValue and ListHasEntry(Current, Entry) then
   begin
     Log('PATH already contains ' + Entry);
     Exit;
   end;
   if Trim(Current) = '' then
     RegWriteExpandStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Entry)
-  else if Current[Length(Current)] = ';' then
-    RegWriteExpandStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Current + Entry)
   else
+    { Append, never replace: an existing trailing separator is an empty entry
+      that must survive, so add/remove round-trips byte-exact. }
     RegWriteExpandStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Current + ';' + Entry);
+  RegWriteDWordValue(HKEY_CURRENT_USER, MarkerKey, 'PathAdded', 1);
   Log('PATH entry added: ' + Entry);
   NotifyEnvironmentChange;
 end;
@@ -195,16 +211,28 @@ end;
 procedure RemoveFromUserPath;
 var
   Entry, Current, Updated: String;
+  HasValue: Boolean;
 begin
   Entry := ExpandConstant('{app}');
-  Current := RawUserPath;
-  if not ListHasEntry(Current, Entry) then
+  if not PathMarkerExists then
   begin
+    Log('The PATH entry was not added by this installer; leaving it unchanged');
+    Exit;
+  end;
+  if not TryReadUserPath(Current, HasValue) then
+  begin
+    Log('Cannot read the user PATH; leaving it unchanged');
+    Exit;
+  end;
+  if (not HasValue) or (not ListHasEntry(Current, Entry)) then
+  begin
+    RegDeleteValue(HKEY_CURRENT_USER, MarkerKey, 'PathAdded');
     Log('PATH does not contain ' + Entry);
     Exit;
   end;
   Updated := RemoveEntry(Current, Entry);
   RegWriteExpandStringValue(HKEY_CURRENT_USER, EnvKey, 'Path', Updated);
+  RegDeleteValue(HKEY_CURRENT_USER, MarkerKey, 'PathAdded');
   Log('PATH entry removed: ' + Entry);
   NotifyEnvironmentChange;
 end;
