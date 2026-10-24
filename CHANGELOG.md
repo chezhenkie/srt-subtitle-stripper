@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file. The format follows Keep a Changelog and the project uses semantic versioning.
 
+## [1.6.5]
+
+### Fixed
+
+- A `srtstripper.json` with deeply nested JSON no longer aborts the process with a stack overflow; nesting is capped at 32 levels and reported as a config error (exit code 2).
+- Input paths that are not valid UTF-8 are handled as raw OS paths instead of a lossy UTF-8 rewrite, so the input file is found and the output name keeps the original bytes.
+- Windows installer: an unreadable user PATH is left unchanged instead of being overwritten with only the install directory.
+- Windows installer: the uninstaller removes the PATH entry only when the setup added it, so a silent install with `/TASKS=` no longer removes an entry it never created.
+- Windows installer: adding the PATH entry keeps an existing trailing separator, so install and uninstall round-trip the user PATH unchanged.
+
+### Changed
+
+- Help text, README and REQUIREMENTS state the config/flag interaction accurately: a mode flag enables its mode on top of the config, and conflicting modes are rejected.
+- CI: workflow-level token permissions reduced to `contents: read`; only the release job has `contents: write`. Clippy runs with `--all-targets`, matching the local gate.
+- README and REQUIREMENTS document the memory model: input and output are buffered whole, peak memory is roughly 4-5x the input size, and multi-gigabyte inputs are not streamed.
+
 ## [1.6.4]
 
 ### Fixed
